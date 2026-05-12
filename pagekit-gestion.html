@@ -1,0 +1,1503 @@
+<div id="chtis-root">
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+const ini = m => (m.prenom[0] + m.nom[0]).toUpperCase();
+const fmtDate = d => new Date(d).toLocaleDateString("fr-FR");
+
+// Color cycle for avatars
+const AV_GRADS = [
+  "linear-gradient(135deg,#4FD1C5,#2C7A7B)",
+  "linear-gradient(135deg,#63B3ED,#2B6CB0)",
+  "linear-gradient(135deg,#F6AD55,#C05621)",
+  "linear-gradient(135deg,#68D391,#276749)",
+  "linear-gradient(135deg,#B794F4,#553C9A)",
+  "linear-gradient(135deg,#FC8181,#C53030)",
+];
+const avGrad = id => AV_GRADS[(id - 1) % AV_GRADS.length];
+
+function SBadge({ s }) {
+  if (s === "payée")      return <span className="badge bg">Payée</span>;
+  if (s === "en attente") return <span className="badge bo">En attente</span>;
+  return <span className="badge br">Impayée</span>;
+}
+function MBadge({ s }) {
+  return s === "actif" ? <span className="badge bg">Actif</span> : <span className="badge bgr">Inactif</span>;
+}
+
+/* SVG ICONS */
+const Icon = ({ name, size = 16, color = "currentColor" }) => {
+  const s = { width: size, height: size, fill: color, flexShrink: 0 };
+  const icons = {
+    home:     <svg viewBox="0 0 24 24" style={s}><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>,
+    users:    <svg viewBox="0 0 24 24" style={s}><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>,
+    contacts: <svg viewBox="0 0 24 24" style={s}><path d="M20 0H4v2h16V0zm0 4H4v2h16V4zM4 22h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2zm8-12.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5S9.5 13.38 9.5 12s1.12-2.5 2.5-2.5zM7 19c0-2.21 2.24-4 5-4s5 1.79 5 4H7z"/></svg>,
+    doc:      <svg viewBox="0 0 24 24" style={s}><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>,
+    invoice:  <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>,
+    mail:     <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>,
+    calendar: <svg viewBox="0 0 24 24" style={s}><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>,
+    chat:     <svg viewBox="0 0 24 24" style={s}><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>,
+    chart:    <svg viewBox="0 0 24 24" style={s}><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>,
+    settings: <svg viewBox="0 0 24 24" style={s}><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>,
+    search:   <svg viewBox="0 0 24 24" style={s}><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>,
+    bell:     <svg viewBox="0 0 24 24" style={s}><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>,
+    phone:    <svg viewBox="0 0 24 24" style={s}><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>,
+    location: <svg viewBox="0 0 24 24" style={s}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>,
+    date:     <svg viewBox="0 0 24 24" style={s}><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>,
+    card:     <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>,
+    user:     <svg viewBox="0 0 24 24" style={s}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>,
+    edit:     <svg viewBox="0 0 24 24" style={s}><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>,
+    trash:    <svg viewBox="0 0 24 24" style={s}><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>,
+    plus:     <svg viewBox="0 0 24 24" style={s}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>,
+    logout:   <svg viewBox="0 0 24 24" style={s}><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>,
+  };
+  return icons[name] || null;
+};
+
+/* ═══ LOGIN ═══ */
+function Login({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [rem, setRem] = useState(false);
+  const [err, setErr] = useState("");
+
+  function go(e) {
+    e.preventDefault();
+    if (email === "admin@chtis-en-maine.fr" && pass === "admin") onLogin();
+    else setErr("Adresse e-mail ou mot de passe incorrect.");
+  }
+
+  return (
+    <div className="lp">
+      <div className="lp-inner">
+        <div className="lp-blur" />
+        <div className="lc">
+          <div className="lb">
+            <div className="li">
+              <Icon name="users" size={28} color="white" />
+            </div>
+            <h1>Ch'tis en Maine</h1>
+            <p>Connexion à l'espace administrateur</p>
+          </div>
+          {err && <div className="lerr">{err}</div>}
+          <form onSubmit={go}>
+            <div className="fg">
+              <label className="fl">Adresse e-mail</label>
+              <input className="fi" type="email" placeholder="admin@chtis-en-maine.fr" value={email} onChange={e=>setEmail(e.target.value)} autoFocus />
+            </div>
+            <div className="fg">
+              <label className="fl">Mot de passe</label>
+              <input className="fi" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} />
+            </div>
+            <div className="fr">
+              <label><input type="checkbox" checked={rem} onChange={e=>setRem(e.target.checked)} /> Se souvenir de moi</label>
+              <a href="#">Mot de passe oublié ?</a>
+            </div>
+            <button className="lbtn" type="submit">Se connecter</button>
+          </form>
+          <p className="lhint">Démo : admin@chtis-en-maine.fr / admin</p>
+          <div className="lfoot">© 2026 Ch'tis en Maine · Tous droits réservés</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ SIDEBAR ═══ */
+const NAVS = [
+  {id:"dashboard", icon:"home",     label:"Tableau de bord"},
+  {id:"members",   icon:"users",    label:"Membres"},
+  {id:"contacts",  icon:"contacts", label:"Contacts"},
+  {id:"documents", icon:"doc",      label:"Documents"},
+  {id:"invoices",  icon:"invoice",  label:"Factures", badge:3},
+  {id:"email",     icon:"mail",     label:"Actualités / Emails"},
+  {id:"events",    icon:"calendar", label:"Événements"},
+  {id:"messages",  icon:"chat",     label:"Messages"},
+  {id:"invoice-gen",icon:"invoice",  label:"Générateur de facture"},
+  {id:"add-member", icon:"users",    label:"Ajouter un membre"},
+  {id:"settings",  icon:"settings", label:"Paramètres"},
+];
+
+function Sidebar({ active, set, logout }) {
+  return (
+    <aside className="sb">
+      <div className="sb-top">
+        <div className="sb-logo">
+          <div className="sb-logo-mark">
+            <Icon name="users" size={18} color="white" />
+          </div>
+          <div>
+            <div className="sb-name">Ch'tis en Maine</div>
+            <div className="sb-sub">Espace administrateur</div>
+          </div>
+        </div>
+      </div>
+      <div className="sb-divider" />
+      <nav className="sb-nav">
+        <div className="sb-section">Menu principal</div>
+        {NAVS.map(n => (
+          <div key={n.id} className={`ni ${active===n.id?"active":""}`} onClick={()=>set(n.id)}>
+            <div className="ni-ico">
+              <Icon name={n.icon} size={15} color={active===n.id ? "white" : "#718096"} />
+            </div>
+            {n.label}
+            {n.badge && <span className="ni-badge">{n.badge}</span>}
+          </div>
+        ))}
+      </nav>
+      <div className="sb-bot">
+        <div className="sb-user" onClick={logout}>
+          <div className="uav">HB</div>
+          <div style={{flex:1}}>
+            <div className="sb-uname">Henri Beaumont</div>
+            <div className="sb-urole">Administrateur</div>
+          </div>
+          <Icon name="logout" size={15} color="#A0AEC0" />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ═══ TOPBAR ═══ */
+function Topbar({ breadcrumb, title, action }) {
+  return (
+    <div className="tb">
+      <div className="tb-left">
+        <div className="tb-page">{breadcrumb}</div>
+        <div className="tb-title">{title}</div>
+      </div>
+      <div className="tb-right">
+        <div className="tb-search">
+          <Icon name="search" size={14} color="#A0AEC0" />
+          <input placeholder="Rechercher…" />
+        </div>
+        <button className="tb-ico" title="Notifications">
+          <Icon name="bell" size={17} color="#718096" />
+          <span className="notif-dot" />
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:9}}>
+          <div style={{textAlign:"right"}}>
+            <div className="tb-uname">Henri Beaumont</div>
+            <div className="tb-urole">Administrateur</div>
+          </div>
+          <div className="tb-av">HB</div>
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ DASHBOARD ═══ */
+function Dashboard({ members, set }) {
+  const actifs = members.filter(m=>m.statut==="actif").length;
+  const recent = [...members].sort((a,b)=>new Date(b.joined)-new Date(a.joined)).slice(0,4);
+
+  const STATS = [
+    {label:"Membres actifs", val:actifs,    trend:"↑ +4 ce mois",  bg:"linear-gradient(127deg,#667eea,#764ba2)"},
+    {label:"Documents",      val:28,        trend:"↑ +3 ce mois",  bg:"linear-gradient(127deg,#4FD1C5,#2C7A7B)"},
+    {label:"Factures",       val:INVOICES.length, trend:"↑ +2 ce mois", bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
+    {label:"Actualités",     val:6,         trend:"↑ +1 ce mois",  bg:"linear-gradient(127deg,#f953c6,#b91d73)"},
+  ];
+
+  const NEWS = [
+    {title:"Assemblée générale 2026",        body:"L'assemblée générale aura lieu le 12 mai à 18h.",               date:"28/04"},
+    {title:"Nouveau document disponible",    body:"Le compte-rendu de la réunion est maintenant disponible.",      date:"27/04"},
+    {title:"Sortie annuelle — inscriptions", body:"Inscriptions ouvertes pour la sortie annuelle en Normandie.",   date:"26/04"},
+  ];
+
+  const DOCS = [
+    {name:"Compte-rendu AG 2026.pdf", size:"1.2 MB", bg:"#FFF5F5", ico:"#C53030"},
+    {name:"Statuts association.pdf",  size:"845 KB", bg:"#EBF8FF", ico:"#2B6CB0"},
+    {name:"Budget 2026.xlsx",         size:"235 KB", bg:"#F0FFF4", ico:"#276749"},
+    {name:"Formulaire adhésion.docx", size:"320 KB", bg:"#FFFAF0", ico:"#C05621"},
+  ];
+
+  const [subj,setSubj]=useState(""); const [msg,setMsg]=useState(""); const [dest,setDest]=useState("all");
+  const [sent,setSent]=useState(false); const [sending,setSending]=useState(false);
+  function doSend(){if(!subj||!msg)return;setSending(true);setTimeout(()=>{setSending(false);setSent(true);setSubj("");setMsg("");setTimeout(()=>setSent(false),3000)},1400)}
+
+  const [igNom,setIgNom]=useState("Dupont"); const [igPre,setIgPre]=useState("Jean");
+  const [igMt,setIgMt]=useState("50,00"); const [igObj,setIgObj]=useState("Cotisation annuelle 2026");
+  const [igDate,setIgDate]=useState("28/04/2026"); const [igGen,setIgGen]=useState(false);
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="stat-row">
+        {STATS.map(s => (
+          <div key={s.label} className="sc" style={{background:s.bg}}>
+            <div className="sc-overlay" /><div className="sc-pattern" /><div className="sc-pattern2" />
+            <div className="sc-label">{s.label}</div>
+            <div className="sc-val">{s.val}</div>
+            <div className="sc-trend">{s.trend}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Row 1 */}
+      <div className="row">
+        <div className="col">
+          <div className="card mb18">
+            <div className="card-hd">
+              <div><div className="card-title">Derniers membres inscrits</div></div>
+              <span className="card-link" onClick={()=>set("members")}>Voir tous →</span>
+            </div>
+            {recent.map(m=>(
+              <div key={m.id} className="ri">
+                <div className="mav" style={{background:avGrad(m.id)}}>{ini(m)}</div>
+                <div className="ri-main">
+                  <div className="ri-name">{m.prenom} {m.nom}</div>
+                  <div className="ri-sub">{m.email}</div>
+                </div>
+                <div className="ri-date">{fmtDate(m.joined)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="col">
+          <div className="card mb18">
+            <div className="card-hd">
+              <div><div className="card-title">Dernières actualités</div></div>
+              <span className="card-link">Voir toutes →</span>
+            </div>
+            {NEWS.map((n,i)=>(
+              <div key={i} className="ri">
+                <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Icon name="mail" size={15} color="white" />
+                </div>
+                <div className="ri-main">
+                  <div className="ri-name">{n.title}</div>
+                  <div className="ri-sub">{n.body}</div>
+                </div>
+                <div className="ri-date">{n.date}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="col-right">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Liste des membres</div>
+              <span className="card-link" onClick={()=>set("members")}>Voir tous</span>
+            </div>
+            {members.slice(0,5).map(m=>(
+              <div key={m.id} className="ml-i">
+                <div className="mav" style={{background:avGrad(m.id),width:30,height:30,fontSize:11}}>{ini(m)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:13,color:"var(--t1)"}}>{m.prenom} {m.nom}</div>
+                  <div style={{fontSize:11.5,color:"var(--t4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div>
+                </div>
+                <MBadge s={m.statut} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2 */}
+      <div className="row" style={{alignItems:"start"}}>
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Documents récents</div>
+              <span className="card-link" onClick={()=>set("documents")}>Voir tous →</span>
+            </div>
+            <div className="doc-grid">
+              {DOCS.map(d=>(
+                <div key={d.name} className="doc-item">
+                  <div className="doc-ico" style={{background:d.bg}}>
+                    <Icon name="doc" size={18} color={d.ico} />
+                  </div>
+                  <div>
+                    <div className="doc-name">{d.name}</div>
+                    <div className="doc-size">{d.size}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Envoyer une nouvelle</div>
+              <span style={{fontSize:12,color:"var(--t4)"}}>à tous les adhérents</span>
+            </div>
+            <div className="cf">
+              <div>
+                <div className="clabel">Titre</div>
+                <input className="ci" placeholder="Ex : Assemblée générale 2026" value={subj} onChange={e=>setSubj(e.target.value)} />
+              </div>
+              <div>
+                <div className="clabel">Message</div>
+                <textarea className="cta" placeholder={"Bonjour à tous,\n\nVotre message ici…"} value={msg} onChange={e=>setMsg(e.target.value)} />
+              </div>
+              <div>
+                <div className="clabel">Destinataires</div>
+                <select className="csel" value={dest} onChange={e=>setDest(e.target.value)}>
+                  <option value="all">Tous les adhérents ({members.filter(m=>m.statut==="actif").length})</option>
+                  <option value="late">Cotisations en retard ({members.filter(m=>m.cotisation!=="payée").length})</option>
+                </select>
+              </div>
+              <button className="send-btn" onClick={doSend} disabled={!subj||!msg||sending}>
+                <Icon name="mail" size={15} color="white" />
+                {sending?"Envoi en cours…":"Envoyer à tous les adhérents"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-right">
+          <div className="card">
+            <div className="card-hd">
+              <div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:4}}>
+                <Icon name="invoice" size={14} color="white" />
+              </div>
+              <div className="card-title">Générateur de facture</div>
+            </div>
+            <div className="ig">
+              <div className="ig-row">
+                <div>
+                  <div className="clabel">Nom</div>
+                  <input className="ci" value={igNom} onChange={e=>setIgNom(e.target.value)} />
+                </div>
+                <div>
+                  <div className="clabel">Prénom</div>
+                  <input className="ci" value={igPre} onChange={e=>setIgPre(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <div className="clabel">Montant (€)</div>
+                <input className="ci" value={igMt} onChange={e=>setIgMt(e.target.value)} />
+              </div>
+              <div>
+                <div className="clabel">Objet</div>
+                <input className="ci" value={igObj} onChange={e=>setIgObj(e.target.value)} />
+              </div>
+              <div>
+                <div className="clabel">Date</div>
+                <input className="ci" value={igDate} onChange={e=>setIgDate(e.target.value)} />
+              </div>
+              <button className="send-btn" onClick={()=>setIgGen(true)}>Générer la facture</button>
+              {igGen && (
+                <button style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}
+                  onMouseOver={e=>e.currentTarget.style.background="#EBF4FF"}
+                  onMouseOut={e=>e.currentTarget.style.background="white"}>
+                  ⬇ Télécharger le PDF
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {sent && <div className="toast"><Icon name="mail" size={15} color="white" /> Email envoyé à {members.filter(m=>m.statut==="actif").length} membres</div>}
+    </div>
+  );
+}
+
+/* ═══ MEMBERS ═══ */
+function Members({ members, onSelect }) {
+  const [search,setSearch]=useState(""); const [filt,setFilt]=useState("Tous");
+  const FILTS = ["Tous","Actif","Inactif","Payée","En attente"];
+  const list = useMemo(()=>members.filter(m=>{
+    const q=search.toLowerCase();
+    const ms=!q||`${m.prenom} ${m.nom} ${m.email} ${m.ville}`.toLowerCase().includes(q);
+    const mf=filt==="Tous"||(filt==="Actif"&&m.statut==="actif")||(filt==="Inactif"&&m.statut==="inactif")||(filt==="Payée"&&m.cotisation==="payée")||(filt==="En attente"&&m.cotisation==="en attente");
+    return ms&&mf;
+  }),[members,search,filt]);
+
+  return (
+    <div className="card">
+      <div className="card-hd" style={{flexWrap:"wrap",gap:10}}>
+        <div className="card-title" style={{flex:"none"}}>{list.length} membres</div>
+        <div style={{flex:1,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <div className="srch">
+            <Icon name="search" size={14} color="#A0AEC0" />
+            <input placeholder="Rechercher un membre…" value={search} onChange={e=>setSearch(e.target.value)} />
+          </div>
+          {FILTS.map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f}</button>)}
+        </div>
+        <button className="add-btn"><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>
+      </div>
+      <table>
+        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th></tr></thead>
+        <tbody>
+          {list.map(m=>(
+            <tr key={m.id} onClick={()=>onSelect(m)}>
+              <td>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div className="mav" style={{background:avGrad(m.id)}}>{ini(m)}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13.5}}>{m.prenom} {m.nom}</div>
+                    <div style={{fontSize:12,color:"var(--t4)"}}>{m.role}</div>
+                  </div>
+                </div>
+              </td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.email}</td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.tel}</td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.ville}</td>
+              <td><MBadge s={m.statut} /></td>
+              <td><SBadge s={m.cotisation} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ═══ DRAWER ═══ */
+function Drawer({ m, close }) {
+  if (!m) return null;
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&close()}>
+      <div className="drawer">
+        <div className="dr-top">
+          <button className="dr-close" onClick={close}>✕</button>
+          <div className="dr-av" style={{background:avGrad(m.id)}}>{ini(m)}</div>
+          <div className="dr-name">{m.prenom} {m.nom}</div>
+          <div className="dr-role">{m.role} · Membre depuis {m.joined.slice(0,4)}</div>
+        </div>
+        <div className="dr-body">
+          <div style={{marginBottom:18}}>
+            <div className="dr-st">Coordonnées</div>
+            {[{i:"mail",l:"E-mail",v:m.email},{i:"phone",l:"Téléphone",v:m.tel},{i:"location",l:"Ville",v:m.ville}].map(r=>(
+              <div key={r.l} className="ir">
+                <div className="ir-ico"><Icon name={r.i} size={14} color="#718096" /></div>
+                <div><div className="ir-l">{r.l}</div><div className="ir-v">{r.v}</div></div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginBottom:18}}>
+            <div className="dr-st">Adhésion</div>
+            <div className="ir"><div className="ir-ico"><Icon name="date" size={14} color="#718096" /></div><div><div className="ir-l">Membre depuis</div><div className="ir-v">{new Date(m.joined).toLocaleDateString("fr-FR",{year:"numeric",month:"long",day:"numeric"})}</div></div></div>
+            <div className="ir"><div className="ir-ico"><Icon name="card" size={14} color="#718096" /></div><div><div className="ir-l">Cotisation 2024</div><div className="ir-v"><SBadge s={m.cotisation} /></div></div></div>
+            <div className="ir"><div className="ir-ico"><Icon name="user" size={14} color="#718096" /></div><div><div className="ir-l">Statut</div><div className="ir-v"><MBadge s={m.statut} /></div></div></div>
+          </div>
+          <div>
+            <div className="dr-st">Actions</div>
+            <div className="act-list">
+              <button className="ab ab-p"><Icon name="mail" size={14} color="white" /> Envoyer un e-mail</button>
+              <button className="ab ab-s"><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
+              {m.cotisation!=="payée"&&<button className="ab ab-s"><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
+              <button className="ab ab-s"><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
+              <button className="ab ab-d"><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ INVOICES ═══ */
+function Invoices() {
+  const [filt,setFilt]=useState("toutes");
+  const list=INVOICES.filter(i=>filt==="toutes"||i.statut===filt);
+  const paid=INVOICES.filter(i=>i.statut==="payée").reduce((a,i)=>a+i.montant,0);
+  const IST=[
+    {l:"Encaissé",v:`${paid} €`,s:`${INVOICES.filter(i=>i.statut==="payée").length} payées`,bg:"linear-gradient(127deg,#56ab2f,#a8e063)"},
+    {l:"En attente",v:`${INVOICES.filter(i=>i.statut==="en attente").length*25} €`,s:`${INVOICES.filter(i=>i.statut==="en attente").length} factures`,bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
+    {l:"Impayé",v:`${INVOICES.filter(i=>i.statut==="impayée").length*25} €`,s:`${INVOICES.filter(i=>i.statut==="impayée").length} factures`,bg:"linear-gradient(127deg,#fc5c7d,#6a3093)"},
+  ];
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:20}}>
+        {IST.map(s=>(
+          <div key={s.l} className="sc" style={{background:s.bg}}>
+            <div className="sc-overlay"/><div className="sc-pattern"/><div className="sc-pattern2"/>
+            <div className="sc-label">{s.l}</div>
+            <div className="sc-val">{s.v}</div>
+            <div className="sc-trend">{s.s}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card">
+        <div className="card-hd">
+          <div className="card-title">Factures {new Date().getFullYear()}</div>
+          <div style={{display:"flex",gap:6}}>
+            {["toutes","payée","en attente","impayée"].map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}
+          </div>
+          <button className="add-btn"><Icon name="plus" size={14} color="white" /> Nouvelle facture</button>
+        </div>
+        <table>
+          <thead><tr><th>N°</th><th>Membre</th><th>Objet</th><th>Date</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+          <tbody>
+            {list.map(inv=>(
+              <tr key={inv.id}>
+                <td style={{fontFamily:"monospace",fontWeight:700,fontSize:12.5,color:"#667eea"}}>{inv.id}</td>
+                <td style={{fontWeight:700}}>{inv.nom}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{inv.type}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{fmtDate(inv.date)}</td>
+                <td style={{fontWeight:800}}>{inv.montant} €</td>
+                <td><SBadge s={inv.statut} /></td>
+                <td><button className="pdf-btn">PDF</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ EMAIL PAGE ═══ */
+function EmailPage({ members }) {
+  const [subj,setSubj]=useState(""); const [msg,setMsg]=useState(""); const [dest,setDest]=useState("all");
+  const [sent,setSent]=useState(false); const [sending,setSending]=useState(false);
+  const recs=dest==="all"?members.filter(m=>m.statut==="actif"):members.filter(m=>m.cotisation!=="payée");
+  function doSend(){if(!subj||!msg)return;setSending(true);setTimeout(()=>{setSending(false);setSent(true);setSubj("");setMsg("");setTimeout(()=>setSent(false),3000)},1400)}
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:18,alignItems:"start"}}>
+      <div className="card">
+        <div className="card-hd"><div className="card-title">Envoyer une nouvelle à tous les adhérents</div></div>
+        <div className="cf">
+          <div><div className="clabel">Titre</div><input className="ci" placeholder="Assemblée générale 2026" value={subj} onChange={e=>setSubj(e.target.value)} /></div>
+          <div><div className="clabel">Message</div><textarea className="cta" style={{minHeight:140}} placeholder={"Bonjour à tous,\n\nVotre message ici…"} value={msg} onChange={e=>setMsg(e.target.value)} /></div>
+          <div><div className="clabel">Destinataires</div><select className="csel" value={dest} onChange={e=>setDest(e.target.value)}>
+            <option value="all">Tous les adhérents ({members.filter(m=>m.statut==="actif").length})</option>
+            <option value="late">Cotisations en retard ({members.filter(m=>m.cotisation!=="payée").length})</option>
+          </select></div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12.5,color:"var(--t4)",fontWeight:500}}>{recs.length} destinataire{recs.length>1?"s":""}</span>
+            <button className="send-btn" style={{width:"auto",padding:"10px 22px"}} onClick={doSend} disabled={!subj||!msg||sending}>
+              <Icon name="mail" size={14} color="white" /> {sending?"Envoi…":"Envoyer à tous les adhérents"}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="pm">
+        <div className="pm-hd">
+          <div style={{width:32,height:32,borderRadius:9,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Icon name="mail" size={16} color="white" />
+          </div>
+          <div>
+            <div style={{fontSize:11.5,opacity:.75}}>Ch'tis en Maine</div>
+            <div style={{fontSize:14.5,fontWeight:800}}>{subj||"Titre du message"}</div>
+          </div>
+        </div>
+        <div className="pm-body">
+          {msg?msg.split("\n").map((l,i)=><p key={i} style={{marginBottom:6}}>{l||<br/>}</p>):<span style={{color:"var(--t5)"}}>Aperçu du message…</span>}
+          {msg&&<><hr style={{border:"none",borderTop:"1px solid var(--t6)",margin:"12px 0"}}/><p style={{fontSize:12,color:"var(--t4)"}}>Cordialement,<br/>L'équipe de Ch'tis en Maine</p></>}
+        </div>
+      </div>
+      {sent&&<div className="toast"><Icon name="mail" size={15} color="white" /> Email envoyé à {recs.length} membres</div>}
+    </div>
+  );
+}
+
+/* ═══ DOCUMENTS ═══ */
+function DocsPage() {
+  const DOCS=[
+    {name:"Compte-rendu AG 2026.pdf",cat:"Réunions",date:"28/04/2026",size:"1.2 MB",bg:"#FFF5F5",ico:"#C53030"},
+    {name:"Statuts de l'association.pdf",cat:"Juridique",date:"20/04/2026",size:"845 KB",bg:"#EBF8FF",ico:"#2B6CB0"},
+    {name:"Formulaire d'adhésion.docx",cat:"Formulaires",date:"15/04/2026",size:"320 KB",bg:"#FFFAF0",ico:"#C05621"},
+    {name:"Budget prévisionnel 2026.xlsx",cat:"Finances",date:"10/04/2026",size:"235 KB",bg:"#F0FFF4",ico:"#276749"},
+    {name:"Rapport d'activité 2025.pdf",cat:"Rapports",date:"05/04/2026",size:"1.8 MB",bg:"#FFF5F5",ico:"#C53030"},
+    {name:"Règlement intérieur.pdf",cat:"Juridique",date:"01/01/2026",size:"412 KB",bg:"#EBF8FF",ico:"#2B6CB0"},
+  ];
+  return (
+    <div className="card">
+      <div className="card-hd">
+        <div className="card-title">Documents</div>
+        <button className="add-btn"><Icon name="plus" size={14} color="white" /> Ajouter un document</button>
+      </div>
+      <div className="docs-grid">
+        {DOCS.map(d=>(
+          <div key={d.name} className="doc-full">
+            <div style={{width:42,height:42,borderRadius:11,background:d.bg,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}>
+              <Icon name="doc" size={20} color={d.ico} />
+            </div>
+            <div style={{fontWeight:700,fontSize:13.5,color:"var(--t1)",marginBottom:2}}>{d.name}</div>
+            <div style={{fontSize:12,color:"var(--t4)",marginBottom:8}}>{d.cat} · {d.date} · {d.size}</div>
+            <div style={{display:"flex",gap:6}}>
+              <button className="pdf-btn">⬇ Télécharger</button>
+              <button className="pdf-btn"><Icon name="trash" size={12} color="#718096" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ INVOICE GENERATOR PAGE ═══ */
+function InvoiceGenerator({ members }) {
+  const [nom, setNom] = useState("Dupont");
+  const [prenom, setPrenom] = useState("Jean");
+  const [email, setEmail] = useState("jean.dupont@example.com");
+  const [montant, setMontant] = useState("25");
+  const [objet, setObjet] = useState("Cotisation annuelle 2026");
+  const [date, setDate] = useState(new Date().toLocaleDateString("fr-FR"));
+  const [generated, setGenerated] = useState(false);
+  const [num] = useState("FACT-2026-" + String(Math.floor(Math.random()*9000)+1000));
+
+  function pickMember(e) {
+    const m = members.find(m => m.id === parseInt(e.target.value));
+    if (m) { setNom(m.nom); setPrenom(m.prenom); setEmail(m.email); }
+  }
+
+  return (
+    <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"start"}}>
+      {/* Form */}
+      <div className="card">
+        <div className="card-hd">
+          <div style={{width:32,height:32,borderRadius:9,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:4}}>
+            <Icon name="invoice" size={16} color="white" />
+          </div>
+          <div className="card-title">Générateur de facture</div>
+        </div>
+        <div className="cf">
+          <div>
+            <div className="clabel">Choisir un membre existant</div>
+            <select className="csel" onChange={pickMember} defaultValue="">
+              <option value="" disabled>— Sélectionner un membre —</option>
+              {members.map(m => <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>)}
+            </select>
+          </div>
+          <div style={{height:1, background:"var(--t6)", margin:"2px 0"}} />
+          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
+            <div>
+              <div className="clabel">Nom</div>
+              <input className="ci" value={nom} onChange={e=>setNom(e.target.value)} />
+            </div>
+            <div>
+              <div className="clabel">Prénom</div>
+              <input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <div className="clabel">Email</div>
+            <input className="ci" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+          </div>
+          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
+            <div>
+              <div className="clabel">Montant (€)</div>
+              <input className="ci" value={montant} onChange={e=>setMontant(e.target.value)} />
+            </div>
+            <div>
+              <div className="clabel">Date</div>
+              <input className="ci" value={date} onChange={e=>setDate(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <div className="clabel">Objet</div>
+            <input className="ci" value={objet} onChange={e=>setObjet(e.target.value)} />
+          </div>
+          <button className="send-btn" onClick={()=>setGenerated(true)}>
+            <Icon name="invoice" size={15} color="white" /> Générer la facture
+          </button>
+          {generated && (
+            <button style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+              onMouseOver={e=>e.currentTarget.style.background="#EBF4FF"}
+              onMouseOut={e=>e.currentTarget.style.background="white"}>
+              ⬇ Télécharger le PDF
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="card" style={{overflow:"visible"}}>
+        <div className="card-hd">
+          <div className="card-title">Aperçu de la facture</div>
+          {generated && <span className="badge bg">Générée</span>}
+        </div>
+        <div style={{padding:"28px 28px 24px", fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+          {/* Header */}
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:38,height:38,borderRadius:10,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Icon name="users" size={18} color="white" />
+              </div>
+              <div>
+                <div style={{fontWeight:800,fontSize:14,color:"var(--t1)"}}>Ch'tis en Maine</div>
+                <div style={{fontSize:11,color:"var(--t4)"}}>Association loi 1901</div>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:20,fontWeight:900,color:"var(--t1)",letterSpacing:".05em",textTransform:"uppercase"}}>Facture</div>
+              <div style={{fontSize:12,color:"#667eea",fontWeight:700,marginTop:2}}>N° {num}</div>
+              <div style={{fontSize:11.5,color:"var(--t4)",marginTop:1}}>Date : {date}</div>
+            </div>
+          </div>
+          <div style={{height:2,background:"linear-gradient(90deg,#667eea,#764ba2)",borderRadius:2,marginBottom:24}} />
+          {/* Billed to */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Facturé à</div>
+              <div style={{fontWeight:700,fontSize:14,color:"var(--t1)"}}>{prenom} {nom}</div>
+              <div style={{fontSize:12.5,color:"var(--t3)",marginTop:2}}>{email}</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Émis par</div>
+              <div style={{fontWeight:700,fontSize:14,color:"var(--t1)"}}>Ch'tis en Maine</div>
+              <div style={{fontSize:12.5,color:"var(--t3)",marginTop:2}}>contact@chtis-en-maine.fr</div>
+              <div style={{fontSize:12.5,color:"var(--t3)"}}>Sarthe, Pays de la Loire</div>
+            </div>
+          </div>
+          {/* Table */}
+          <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:20}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:0}}>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)"}}>Description</div>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)",textAlign:"right"}}>Qté</div>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)",textAlign:"right"}}>Total</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,fontWeight:500,color:"var(--t1)"}}>{objet}</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,color:"var(--t3)",textAlign:"right"}}>1</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,fontWeight:700,color:"var(--t1)",textAlign:"right"}}>{montant} €</div>
+            </div>
+          </div>
+          {/* Total */}
+          <div style={{display:"flex",justifyContent:"flex-end"}}>
+            <div style={{background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:"var(--r-sm)",padding:"14px 22px",color:"white",minWidth:160,textAlign:"right"}}>
+              <div style={{fontSize:11.5,opacity:.8,marginBottom:3}}>Montant total</div>
+              <div style={{fontSize:22,fontWeight:900,letterSpacing:"-.5px"}}>{montant} €</div>
+            </div>
+          </div>
+          <div style={{marginTop:20,padding:14,background:"var(--bg)",borderRadius:"var(--r-sm)",fontSize:12,color:"var(--t4)",textAlign:"center"}}>
+            Merci de votre confiance — Ch'tis en Maine · Association loi 1901
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ ADD MEMBER PAGE ═══ */
+function AddMember({ onCreated }) {
+  const [step, setStep] = useState(1); // 1=info, 2=access, 3=done
+  const [form, setForm] = useState({
+    prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
+    login:"", password:"", confirm:"", cotisation:"non payée", statut:"actif"
+  });
+  const [errors, setErrors] = useState({});
+  const [showPass, setShowPass] = useState(false);
+
+  function upd(k, v) { setForm(f=>({...f,[k]:v})); if(errors[k]) setErrors(e=>({...e,[k]:""})); }
+
+  function validateStep1() {
+    const e={};
+    if (!form.prenom.trim()) e.prenom="Requis";
+    if (!form.nom.trim()) e.nom="Requis";
+    if (!form.email.trim() || !form.email.includes("@")) e.email="Email invalide";
+    if (!form.tel.trim()) e.tel="Requis";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function validateStep2() {
+    const e={};
+    if (!form.login.trim()) e.login="Requis";
+    if (form.password.length < 6) e.password="6 caractères minimum";
+    if (form.password !== form.confirm) e.confirm="Les mots de passe ne correspondent pas";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function genLogin() {
+    const l = (form.prenom.toLowerCase().replace(/\s/g,"") + "." + form.nom.toLowerCase().replace(/\s/g,"")).substring(0,30);
+    upd("login", l);
+  }
+
+  function genPassword() {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+    const p = Array.from({length:10}, ()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+    upd("password", p); upd("confirm", p);
+  }
+
+  const ROLES = ["Membre","Président","Vice-Président","Secrétaire","Trésorier","Conseil d'Administration"];
+
+  const StepDot = ({n}) => (
+    <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,
+        background: step>=n ? "linear-gradient(135deg,#667eea,#764ba2)" : "var(--bg)",
+        color: step>=n ? "white" : "var(--t4)",
+        boxShadow: step>=n ? "0 4px 10px rgba(102,126,234,.3)" : "none",
+        transition:"all .3s"
+      }}>{step>n ? "✓" : n}</div>
+      {n < 3 && <div style={{width:40,height:2,background: step>n ? "linear-gradient(90deg,#667eea,#764ba2)" : "var(--t6)",borderRadius:2,transition:"all .3s"}} />}
+    </div>
+  );
+
+  return (
+    <div style={{maxWidth:780, margin:"0 auto"}}>
+      {/* Stepper */}
+      <div className="card" style={{marginBottom:20}}>
+        <div style={{padding:"20px 28px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div className="card-title">Ajouter un nouveau membre</div>
+          <div style={{display:"flex",alignItems:"center",gap:0}}>
+            {[1,2,3].map(n=><StepDot key={n} n={n} />)}
+          </div>
+        </div>
+        <div style={{height:1,background:"var(--t6)"}} />
+        <div style={{padding:"8px 28px 12px",display:"flex",gap:40}}>
+          {[{n:1,l:"Informations personnelles"},{n:2,l:"Identifiants de connexion"},{n:3,l:"Confirmation"}].map(s=>(
+            <div key={s.n} style={{fontSize:12.5,fontWeight:step===s.n?700:500,color:step===s.n?"#667eea":step>s.n?"var(--t3)":"var(--t4)"}}>{s.l}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Step 1: Personal info */}
+      {step===1 && (
+        <div className="card">
+          <div className="card-hd"><div className="card-title">Informations personnelles</div></div>
+          <div className="cf">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Prénom *</div>
+                <input className="ci" placeholder="Jean" value={form.prenom} onChange={e=>upd("prenom",e.target.value)} style={errors.prenom?{borderColor:"var(--red-d)"}:{}} />
+                {errors.prenom && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.prenom}</div>}
+              </div>
+              <div>
+                <div className="clabel">Nom *</div>
+                <input className="ci" placeholder="Dupont" value={form.nom} onChange={e=>upd("nom",e.target.value)} style={errors.nom?{borderColor:"var(--red-d)"}:{}} />
+                {errors.nom && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.nom}</div>}
+              </div>
+            </div>
+            <div>
+              <div className="clabel">Adresse e-mail *</div>
+              <input className="ci" type="email" placeholder="jean.dupont@email.fr" value={form.email} onChange={e=>upd("email",e.target.value)} style={errors.email?{borderColor:"var(--red-d)"}:{}} />
+              {errors.email && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.email}</div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Téléphone *</div>
+                <input className="ci" placeholder="+33 6 12 34 56 78" value={form.tel} onChange={e=>upd("tel",e.target.value)} style={errors.tel?{borderColor:"var(--red-d)"}:{}} />
+                {errors.tel && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.tel}</div>}
+              </div>
+              <div>
+                <div className="clabel">Ville</div>
+                <input className="ci" placeholder="Le Mans" value={form.ville} onChange={e=>upd("ville",e.target.value)} />
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Rôle dans l'association</div>
+                <select className="csel" value={form.role} onChange={e=>upd("role",e.target.value)}>
+                  {ROLES.map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="clabel">Statut</div>
+                <select className="csel" value={form.statut} onChange={e=>upd("statut",e.target.value)}>
+                  <option value="actif">Actif</option>
+                  <option value="inactif">Inactif</option>
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={()=>{ if(validateStep1()) setStep(2); }}>
+                Suivant → Identifiants
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Login & password */}
+      {step===2 && (
+        <div className="card">
+          <div className="card-hd">
+            <div className="card-title">Identifiants de connexion</div>
+            <div style={{fontSize:12.5,color:"var(--t4)"}}>Ces identifiants permettront au membre de se connecter à l'espace membres</div>
+          </div>
+          <div className="cf">
+            <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:40,height:40,borderRadius:50,background:avGrad(1),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:"white",flexShrink:0}}>
+                {form.prenom[0]||"?"}{form.nom[0]||"?"}
+              </div>
+              <div>
+                <div style={{fontWeight:700,fontSize:14}}>{form.prenom||"Prénom"} {form.nom||"Nom"}</div>
+                <div style={{fontSize:12.5,color:"var(--t4)"}}>{form.email||"email@exemple.fr"}</div>
+              </div>
+            </div>
+
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                <div className="clabel">Identifiant (login) *</div>
+                {form.prenom && form.nom && (
+                  <button onClick={genLogin} style={{fontSize:12,color:"#667eea",background:"none",border:"none",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>
+                    Générer automatiquement
+                  </button>
+                )}
+              </div>
+              <input className="ci" placeholder="jean.dupont" value={form.login} onChange={e=>upd("login",e.target.value)} style={errors.login?{borderColor:"var(--red-d)"}:{}} />
+              {errors.login && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.login}</div>}
+              <div style={{fontSize:12,color:"var(--t4)",marginTop:4}}>L'identifiant sera utilisé pour se connecter à l'espace membres.</div>
+            </div>
+
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                <div className="clabel">Mot de passe *</div>
+                <button onClick={genPassword} style={{fontSize:12,color:"#667eea",background:"none",border:"none",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>
+                  Générer un mot de passe fort
+                </button>
+              </div>
+              <div style={{position:"relative"}}>
+                <input className="ci" type={showPass?"text":"password"} placeholder="••••••••" value={form.password} onChange={e=>upd("password",e.target.value)} style={{paddingRight:44, ...(errors.password?{borderColor:"var(--red-d)"}:{})}} />
+                <button onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--t4)"}}>
+                  {showPass?"Cacher":"Voir"}
+                </button>
+              </div>
+              {errors.password && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.password}</div>}
+            </div>
+
+            <div>
+              <div className="clabel">Confirmer le mot de passe *</div>
+              <input className="ci" type={showPass?"text":"password"} placeholder="••••••••" value={form.confirm} onChange={e=>upd("confirm",e.target.value)} style={errors.confirm?{borderColor:"var(--red-d)"}:{}} />
+              {errors.confirm && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.confirm}</div>}
+            </div>
+
+            <div style={{background:"#EBF8FF",border:"1px solid #BEE3F8",borderRadius:"var(--r-sm)",padding:"12px 16px",fontSize:13,color:"#2B6CB0",display:"flex",gap:8,alignItems:"flex-start"}}>
+              <span style={{flexShrink:0}}>ℹ️</span>
+              <span>Un email avec les identifiants de connexion sera envoyé automatiquement à <strong>{form.email||"l'adresse e-mail du membre"}</strong>.</span>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <button onClick={()=>setStep(1)} style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>
+                ← Retour
+              </button>
+              <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={()=>{ if(validateStep2()) setStep(3); }}>
+                Créer le compte membre →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Confirmation */}
+      {step===3 && (
+        <div className="card" style={{textAlign:"center",padding:"52px 40px"}}>
+          <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#56ab2f,#a8e063)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",boxShadow:"0 8px 24px rgba(86,171,47,.3)",fontSize:32}}>
+            ✓
+          </div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",marginBottom:8,letterSpacing:"-.3px"}}>Membre créé avec succès !</div>
+          <div style={{fontSize:14,color:"var(--t3)",marginBottom:28,maxWidth:420,margin:"0 auto 28px"}}>
+            <strong>{form.prenom} {form.nom}</strong> a bien été ajouté(e) à l'association. Un email avec ses identifiants de connexion a été envoyé à <strong>{form.email}</strong>.
+          </div>
+          <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",padding:"16px 22px",maxWidth:380,margin:"0 auto 28px",textAlign:"left"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>Récapitulatif des accès</div>
+            {[["Identifiant",form.login],["Mot de passe",form.password],["Email",form.email]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--t6)"}}>
+                <span style={{fontSize:12.5,color:"var(--t3)",fontWeight:500}}>{l}</span>
+                <span style={{fontSize:12.5,fontWeight:700,color:"var(--t1)",fontFamily:"monospace"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+            <button onClick={()=>{ setStep(1); setForm({prenom:"",nom:"",email:"",tel:"",ville:"",role:"Membre",login:"",password:"",confirm:"",cotisation:"non payée",statut:"actif"}); }} 
+              style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>
+              Ajouter un autre membre
+            </button>
+            <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={onCreated}>
+              <Icon name="users" size={15} color="white" /> Voir la liste des membres
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══ PLACEHOLDER ═══ */
+function Placeholder({icon,label}) {
+  return (
+    <div className="card" style={{padding:"70px 24px",textAlign:"center"}}>
+      <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 24px rgba(102,126,234,.3)"}}>
+        <Icon name={icon} size={28} color="white" />
+      </div>
+      <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:6,letterSpacing:"-.2px"}}>{label}</div>
+      <div style={{fontSize:13,color:"var(--t4)"}}>Cette section sera bientôt disponible.</div>
+    </div>
+  );
+}
+
+/* ═══ APP ═══ */
+const PAGES = {
+  dashboard:["Pages","Tableau de bord"],
+  members:  ["Membres","Gestion des membres"],
+  contacts: ["Contacts","Annuaire des contacts"],
+  documents:["Documents","Gestion des documents"],
+  invoices: ["Factures","Cotisations & Factures"],
+  email:    ["Communications","Actualités & Emails"],
+  events:   ["Agenda","Événements"],
+  messages: ["Communications","Messages"],
+  "invoice-gen": ["Outils","Générateur de facture"],
+  "add-member":  ["Membres","Ajouter un membre"],
+  settings: ["Admin","Paramètres"],
+};
+
+function App() {
+  const [in_,setIn]=useState(false); const [page,setPage]=useState("dashboard"); const [sel,setSel]=useState(null);
+  if (!in_) return <Login onLogin={()=>setIn(true)} />;
+  function go(p){setPage(p);setSel(null)}
+  const [bc,title]=PAGES[page]||["",""];
+
+  function render(){
+    switch(page){
+      case "dashboard": return <Dashboard members={MEMBERS} set={go} />;
+      case "members":   return <Members members={MEMBERS} onSelect={setSel} />;
+      case "documents": return <DocsPage />;
+      case "invoices":  return <Invoices />;
+      case "email":       return <EmailPage members={MEMBERS} />;
+      case "invoice-gen": return <InvoiceGenerator members={MEMBERS} />;
+      case "add-member":  return <AddMember onCreated={()=>go("members")} />;
+      default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
+    }
+  }
+
+  return (
+    <div className="shell">
+      <Sidebar active={page} set={go} logout={()=>setIn(false)} />
+      <div className="main">
+        <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn"><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
+        <div className="page">{render()}</div>
+      </div>
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</div>
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script>
+// Données fictives des membres — Ch'tis en Maine
+const MEMBERS = [
+  { id: 1, nom: "Dupont", prenom: "Jean-Pierre", email: "jp.dupont@gmail.com", tel: "+33 6 12 34 56 78", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-03-15", role: "Membre" },
+  { id: 2, nom: "Lecomte", prenom: "Marie-Claire", email: "mc.lecomte@orange.fr", tel: "+33 6 23 45 67 89", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2015-09-10", role: "Vice-Présidente" },
+  { id: 3, nom: "Delacroix", prenom: "Bernard", email: "b.delacroix@laposte.net", tel: "+33 6 34 56 78 90", ville: "Allonnes", statut: "actif", cotisation: "en attente", montant: 25, annee: 2024, joined: "2020-01-22", role: "Membre" },
+  { id: 4, nom: "Fontaine", prenom: "Isabelle", email: "i.fontaine@wanadoo.fr", tel: "+33 6 45 67 89 01", ville: "La Flèche", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2019-06-05", role: "Trésorière" },
+  { id: 5, nom: "Mercier", prenom: "Robert", email: "r.mercier@sfr.fr", tel: "+33 6 56 78 90 12", ville: "Sablé-sur-Sarthe", statut: "inactif", cotisation: "impayée", montant: 25, annee: 2024, joined: "2016-11-30", role: "Membre" },
+  { id: 6, nom: "Leclercq", prenom: "Sylvie", email: "s.leclercq@gmail.com", tel: "+33 6 67 89 01 23", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2021-02-14", role: "Secrétaire" },
+  { id: 7, nom: "Beaumont", prenom: "Henri", email: "h.beaumont@free.fr", tel: "+33 6 78 90 12 34", ville: "Mamers", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2013-07-20", role: "Président" },
+  { id: 8, nom: "Poulain", prenom: "Nathalie", email: "n.poulain@hotmail.fr", tel: "+33 6 89 01 23 45", ville: "Le Mans", statut: "actif", cotisation: "en attente", montant: 25, annee: 2024, joined: "2022-04-01", role: "Membre" },
+  { id: 9, nom: "Vasseur", prenom: "Didier", email: "d.vasseur@gmail.com", tel: "+33 6 90 12 34 56", ville: "La Ferté-Bernard", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2017-08-18", role: "Membre" },
+  { id: 10, nom: "Garnier", prenom: "Christine", email: "c.garnier@orange.fr", tel: "+33 6 01 23 45 67", ville: "Le Mans", statut: "inactif", cotisation: "impayée", montant: 25, annee: 2024, joined: "2014-05-11", role: "Membre" },
+  { id: 11, nom: "Moreau", prenom: "Thierry", email: "t.moreau@laposte.net", tel: "+33 6 11 22 33 44", ville: "Coulaines", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2023-01-10", role: "Membre" },
+  { id: 12, nom: "Laurent", prenom: "Brigitte", email: "b.laurent@sfr.fr", tel: "+33 6 22 33 44 55", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2020-10-25", role: "Membre" },
+];
+
+const INVOICES = [
+  { id: "F-2024-001", memberId: 1, nom: "Dupont Jean-Pierre", date: "2024-01-15", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-002", memberId: 2, nom: "Lecomte Marie-Claire", date: "2024-01-18", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-003", memberId: 3, nom: "Delacroix Bernard", date: "2024-02-01", montant: 25, statut: "en attente", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-004", memberId: 4, nom: "Fontaine Isabelle", date: "2024-01-20", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-005", memberId: 5, nom: "Mercier Robert", date: "2024-01-22", montant: 25, statut: "impayée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-006", memberId: 6, nom: "Leclercq Sylvie", date: "2024-01-25", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-007", memberId: 7, nom: "Beaumont Henri", date: "2024-01-10", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-008", memberId: 8, nom: "Poulain Nathalie", date: "2024-02-05", montant: 25, statut: "en attente", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-009", memberId: 9, nom: "Vasseur Didier", date: "2024-01-28", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-010", memberId: 10, nom: "Garnier Christine", date: "2024-01-30", montant: 25, statut: "impayée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-011", memberId: 11, nom: "Moreau Thierry", date: "2024-02-10", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+  { id: "F-2024-012", memberId: 12, nom: "Laurent Brigitte", date: "2024-02-12", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
+];
+
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Venus palette */
+  --teal:    #4FD1C5; --teal-d:   #2C7A7B; --teal-bg: linear-gradient(127deg,#2afadf,#4c83ff);
+  --blue:    #63B3ED; --blue-d:   #2B6CB0; --blue-bg: linear-gradient(127deg,#a8edea,#63b3ed);
+  --green:   #68D391; --green-d:  #276749; --green-bg:linear-gradient(127deg,#56ab2f,#a8e063);
+  --orange:  #F6AD55; --orange-d: #C05621; --orange-bg:linear-gradient(127deg,#f7971e,#ffd200);
+  --purple:  #B794F4; --purple-d: #553C9A;
+  --red:     #FC8181; --red-d:    #C53030;
+
+  --primary: #4299E1;
+  --primary-d: #2B6CB0;
+
+  --bg:  #EDF2F7;
+  --white: #ffffff;
+  --card: #ffffff;
+
+  --t1: #1A202C;
+  --t2: #4A5568;
+  --t3: #718096;
+  --t4: #A0AEC0;
+  --t5: #CBD5E0;
+  --t6: #E2E8F0;
+
+  --sidebar: 250px;
+  --r: 15px;
+  --r-sm: 10px;
+  --r-xs: 7px;
+
+  --sh: 0 3px 20px rgba(0,0,0,.06);
+  --sh-sm: 0 1px 8px rgba(0,0,0,.05);
+  --sh-lg: 0 8px 32px rgba(0,0,0,.1);
+}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+#root{height:100%}
+input,button,select,textarea{font-family:'Plus Jakarta Sans',sans-serif}
+button{cursor:pointer;border:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--t5);border-radius:4px}
+
+/* ═══ LOGIN ═══ */
+.lp{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+.lp-inner{position:relative}
+.lp-blur{
+  position:absolute;inset:-60px;
+  background:radial-gradient(circle at 30% 40%,rgba(255,255,255,.15),transparent 60%),
+             radial-gradient(circle at 70% 70%,rgba(255,255,255,.1),transparent 50%);
+  pointer-events:none;
+}
+.lc{
+  position:relative;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);
+  border-radius:20px;padding:44px 40px;width:400px;
+  box-shadow:0 24px 64px rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.8);
+}
+.lb{text-align:center;margin-bottom:32px}
+.li{
+  width:60px;height:60px;border-radius:16px;margin:0 auto 14px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(102,126,234,.4);
+}
+.li svg{width:28px;height:28px;fill:white}
+.lb h1{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.3px}
+.lb p{font-size:13px;color:var(--t3);margin-top:4px}
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:12.5px;font-weight:700;color:var(--t2);margin-bottom:6px;letter-spacing:.03em}
+.fi{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--t6);border-radius:var(--r-sm);
+  font-size:14px;color:var(--t1);background:var(--bg);
+  outline:none;transition:all .18s;
+}
+.fi:focus{border-color:#667eea;background:white;box-shadow:0 0 0 4px rgba(102,126,234,.1)}
+.fi::placeholder{color:var(--t4)}
+.fr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:13px}
+.fr label{display:flex;align-items:center;gap:7px;color:var(--t3);cursor:pointer}
+.fr a{color:#667eea;text-decoration:none;font-weight:600}
+.lbtn{
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;border:none;border-radius:var(--r-sm);
+  font-size:14px;font-weight:700;
+  box-shadow:0 6px 20px rgba(102,126,234,.4);
+  transition:all .2s;letter-spacing:.02em;
+}
+.lbtn:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(102,126,234,.5)}
+.lbtn:active{transform:translateY(0)}
+.lerr{background:#FFF5F5;color:#C53030;border:1px solid #FED7D7;border-radius:var(--r-sm);padding:10px 14px;font-size:13px;margin-bottom:16px}
+.lhint{text-align:center;font-size:12px;color:var(--t4);margin-top:14px}
+.lfoot{text-align:center;font-size:11.5px;color:var(--t4);margin-top:8px}
+
+/* ═══ SHELL ═══ */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ═══ SIDEBAR ═══ */
+.sb{
+  width:var(--sidebar);background:var(--white);
+  border-right:1px solid var(--t6);
+  display:flex;flex-direction:column;flex-shrink:0;
+  box-shadow:4px 0 24px rgba(0,0,0,.04);
+  overflow-y:auto;
+}
+.sb-top{padding:22px 20px 18px}
+.sb-logo{display:flex;align-items:center;gap:12px}
+.sb-logo-mark{
+  width:38px;height:38px;border-radius:11px;flex-shrink:0;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(102,126,234,.35);
+}
+.sb-logo-mark svg{width:18px;height:18px;fill:white}
+.sb-name{font-size:14px;font-weight:800;color:var(--t1);letter-spacing:-.2px}
+.sb-sub{font-size:11px;color:var(--t4);margin-top:1px}
+.sb-divider{height:1px;background:var(--t6);margin:10px 20px}
+.sb-nav{flex:1;padding:6px 12px}
+.sb-section{font-size:10.5px;font-weight:700;color:var(--t4);letter-spacing:.08em;text-transform:uppercase;padding:12px 8px 6px}
+.ni{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:var(--r-sm);
+  color:var(--t3);font-size:13.5px;font-weight:500;
+  transition:all .14s;cursor:pointer;margin-bottom:1px;
+}
+.ni:hover{background:var(--bg);color:var(--t1)}
+.ni.active{
+  background:linear-gradient(127deg,rgba(102,126,234,.12),rgba(118,75,162,.08));
+  color:#667eea;font-weight:700;
+}
+.ni-ico{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .14s;
+}
+.ni.active .ni-ico{background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 4px 12px rgba(102,126,234,.3)}
+.ni.active .ni-ico svg{fill:white}
+.ni:not(.active) .ni-ico{background:var(--bg)}
+.ni:not(.active) .ni-ico svg{fill:var(--t3)}
+.ni-ico svg{width:15px;height:15px}
+.ni-badge{margin-left:auto;background:var(--red-d);color:white;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px}
+.sb-bot{padding:12px 12px;border-top:1px solid var(--t6)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;transition:background .14s}
+.sb-user:hover{background:var(--bg)}
+.uav{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;flex-shrink:0}
+.sb-uname{font-size:13px;font-weight:700;color:var(--t1)}
+.sb-urole{font-size:11px;color:var(--t4)}
+
+/* ═══ MAIN ═══ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ═══ TOPBAR ═══ */
+.tb{
+  height:64px;background:rgba(255,255,255,.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--t6);
+  display:flex;align-items:center;padding:0 28px;gap:14px;flex-shrink:0;
+}
+.tb-left{flex:1;min-width:0}
+.tb-page{font-size:10.5px;font-weight:700;color:var(--t4);letter-spacing:.08em;text-transform:uppercase}
+.tb-title{font-size:18px;font-weight:800;color:var(--t1);letter-spacing:-.3px;line-height:1}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-search{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1.5px solid var(--t6);
+  border-radius:var(--r-sm);padding:8px 14px;width:200px;transition:all .18s;
+}
+.tb-search:focus-within{background:white;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.tb-search input{border:none;background:transparent;outline:none;font-size:13px;color:var(--t1);width:100%}
+.tb-search input::placeholder{color:var(--t4)}
+.tb-ico{
+  width:38px;height:38px;border-radius:var(--r-sm);
+  background:var(--bg);border:1.5px solid var(--t6);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .14s;position:relative;
+}
+.tb-ico:hover{background:white;border-color:var(--t5)}
+.tb-ico svg{width:17px;height:17px;fill:var(--t3)}
+.notif-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#F6AD55;border:2px solid white}
+.btn-gradient{
+  display:flex;align-items:center;gap:7px;padding:9px 18px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;border:none;border-radius:var(--r-sm);
+  font-size:13px;font-weight:700;
+  box-shadow:0 4px 16px rgba(102,126,234,.35);
+  transition:all .18s;white-space:nowrap;
+}
+.btn-gradient:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(102,126,234,.4)}
+.tb-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;border:2px solid rgba(102,126,234,.3)}
+.tb-uname{font-size:13px;font-weight:700;color:var(--t1)}
+.tb-urole{font-size:11px;color:var(--t4)}
+
+/* ═══ PAGE ═══ */
+.page{flex:1;overflow-y:auto;padding:24px 28px}
+
+/* ═══ CARD ═══ */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.card-hd{display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid var(--t6);gap:10px}
+.card-title{font-size:14.5px;font-weight:800;color:var(--t1);flex:1;letter-spacing:-.1px}
+.card-sub{font-size:12px;color:var(--t4);margin-top:2px;font-weight:400}
+.card-link{font-size:13px;color:#667eea;font-weight:600;cursor:pointer;white-space:nowrap}
+.card-link:hover{text-decoration:underline}
+
+/* ═══ GRADIENT STAT CARDS ═══ */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.sc{
+  border-radius:var(--r);padding:20px 22px;
+  color:white;position:relative;overflow:hidden;
+  box-shadow:var(--sh-lg);
+  transition:transform .18s,box-shadow .18s;
+  cursor:default;
+}
+.sc:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(0,0,0,.14)}
+.sc-overlay{position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 60%);pointer-events:none}
+.sc-pattern{position:absolute;right:-20px;bottom:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.sc-pattern2{position:absolute;right:20px;bottom:-40px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none}
+.sc-label{font-size:12px;font-weight:700;opacity:.85;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.sc-val{font-size:32px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.sc-trend{font-size:12.5px;opacity:.8;margin-top:6px;font-weight:500}
+
+/* ═══ LAYOUTS ═══ */
+.row{display:flex;gap:18px;margin-bottom:18px;align-items:flex-start}
+.col{flex:1;min-width:0}
+.col-2{flex:1.6;min-width:0}
+.col-right{width:270px;flex-shrink:0}
+.mb18{margin-bottom:18px}
+
+/* ═══ TABLE ═══ */
+table{width:100%;border-collapse:collapse}
+thead th{
+  padding:11px 18px;font-size:11.5px;font-weight:700;color:var(--t4);
+  text-align:left;background:#FAFBFF;border-bottom:1px solid var(--t6);
+  text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--t6);transition:background .12s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#FAFBFF}
+td{padding:12px 18px;font-size:13.5px;vertical-align:middle}
+
+/* ═══ BADGES ═══ */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.bg{background:#F0FFF4;color:#276749}
+.bo{background:#FFFAF0;color:#C05621}
+.br{background:#FFF5F5;color:#C53030}
+.bb{background:#EBF8FF;color:#2B6CB0}
+.bgr{background:var(--bg);color:var(--t3)}
+
+/* ═══ AVATAR ═══ */
+.mav{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:white;flex-shrink:0;
+}
+
+/* ═══ RECENT ROWS ═══ */
+.ri{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--t6);transition:background .12s;cursor:pointer}
+.ri:last-child{border-bottom:none}
+.ri:hover{background:#FAFBFF}
+.ri-main{flex:1;min-width:0}
+.ri-name{font-size:13.5px;font-weight:700;color:var(--t1)}
+.ri-sub{font-size:12px;color:var(--t4);margin-top:1px}
+.ri-date{font-size:12px;color:var(--t4);white-space:nowrap;font-weight:500}
+
+/* ═══ MEMBER LIST SIDE ═══ */
+.ml-i{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--t6);transition:background .12s;cursor:pointer}
+.ml-i:last-child{border-bottom:none}
+.ml-i:hover{background:#FAFBFF}
+
+/* ═══ DOC GRID ═══ */
+.doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px}
+.doc-item{
+  display:flex;align-items:center;gap:11px;padding:12px 14px;
+  border:1.5px solid var(--t6);border-radius:var(--r-sm);
+  transition:all .14s;cursor:pointer;
+}
+.doc-item:hover{border-color:rgba(102,126,234,.3);background:#FAFBFF;transform:translateY(-1px);box-shadow:var(--sh-sm)}
+.doc-ico{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.doc-ico svg{width:18px;height:18px}
+.doc-name{font-size:12.5px;font-weight:700;color:var(--t1);line-height:1.3}
+.doc-size{font-size:11.5px;color:var(--t4);margin-top:2px}
+
+/* ═══ COMPOSE ═══ */
+.cf{padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.clabel{font-size:11.5px;font-weight:700;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
+.ci{
+  width:100%;padding:10px 13px;
+  border:1.5px solid var(--t6);border-radius:var(--r-sm);
+  font-size:13.5px;color:var(--t1);background:var(--bg);
+  outline:none;transition:all .18s;
+}
+.ci:focus{border-color:#667eea;background:white;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.ci::placeholder{color:var(--t4)}
+.cta{
+  width:100%;padding:10px 13px;
+  border:1.5px solid var(--t6);border-radius:var(--r-sm);
+  font-size:13.5px;color:var(--t1);background:var(--bg);
+  outline:none;transition:all .18s;resize:none;min-height:90px;line-height:1.6;
+}
+.cta:focus{border-color:#667eea;background:white;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.cta::placeholder{color:var(--t4)}
+.csel{
+  width:100%;padding:10px 13px;
+  border:1.5px solid var(--t6);border-radius:var(--r-sm);
+  font-size:13.5px;color:var(--t1);background:var(--bg);outline:none;
+}
+
+/* ═══ INVOICE GENERATOR ═══ */
+.ig{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.ig-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* ═══ DRAWER ═══ */
+.overlay{position:fixed;inset:0;background:rgba(26,32,44,.35);z-index:100;display:flex;justify-content:flex-end;animation:fIn .18s ease}
+.drawer{width:390px;background:white;height:100%;overflow-y:auto;box-shadow:-8px 0 40px rgba(0,0,0,.12);animation:sIn .22s ease}
+@keyframes fIn{from{opacity:0}to{opacity:1}}
+@keyframes sIn{from{transform:translateX(32px);opacity:0}to{transform:translateX(0);opacity:1}}
+.dr-top{padding:28px 22px 22px;color:white;position:relative;background:linear-gradient(135deg,#667eea,#764ba2)}
+.dr-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.18);border:none;color:white;width:30px;height:30px;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background .14s}
+.dr-close:hover{background:rgba(255,255,255,.28)}
+.dr-av{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:white;margin-bottom:10px;border:2px solid rgba(255,255,255,.35)}
+.dr-name{font-size:18px;font-weight:800;letter-spacing:-.2px}
+.dr-role{font-size:12.5px;opacity:.75;margin-top:3px}
+.dr-body{padding:20px}
+.dr-st{font-size:11px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.ir{display:flex;align-items:flex-start;gap:11px;padding:8px 0;border-bottom:1px solid var(--t6)}
+.ir:last-child{border-bottom:none}
+.ir-ico{width:30px;height:30px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ir-ico svg{width:14px;height:14px;fill:var(--t3)}
+.ir-l{font-size:11px;color:var(--t4);font-weight:500}
+.ir-v{font-size:13.5px;font-weight:600;color:var(--t1);margin-top:1px}
+.act-list{display:flex;flex-direction:column;gap:7px}
+.ab{width:100%;padding:10px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;transition:all .14s}
+.ab-p{background:linear-gradient(135deg,#667eea,#764ba2);color:white;box-shadow:0 4px 14px rgba(102,126,234,.3)}
+.ab-p:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(102,126,234,.35)}
+.ab-s{background:var(--bg);color:var(--t2);border:1.5px solid var(--t6)}
+.ab-s:hover{background:white;border-color:var(--t5)}
+.ab-d{background:#FFF5F5;color:#C53030}
+.ab-d:hover{background:#FED7D7}
+
+/* ═══ INVOICES ═══ */
+.pdf-btn{padding:5px 10px;border:1.5px solid var(--t6);border-radius:6px;background:var(--bg);font-size:12px;color:var(--t3);font-weight:500;transition:all .12s}
+.pdf-btn:hover{background:white;border-color:var(--t5)}
+
+/* ═══ FILTER PILLS ═══ */
+.fp{padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600;border:1.5px solid var(--t6);background:white;color:var(--t3);transition:all .14s}
+.fp:hover{border-color:#667eea;color:#667eea}
+.fp.active{background:linear-gradient(135deg,#667eea,#764ba2);border-color:transparent;color:white;box-shadow:0 4px 12px rgba(102,126,234,.3)}
+.srch{display:flex;align-items:center;gap:8px;background:white;border:1.5px solid var(--t6);border-radius:var(--r-sm);padding:8px 12px;width:210px}
+.srch input{border:none;background:transparent;outline:none;font-size:13px;color:var(--t1);width:100%}
+.srch input::placeholder{color:var(--t4)}
+.srch svg{width:14px;height:14px;fill:var(--t4);flex-shrink:0}
+
+/* ═══ SEND BTN ═══ */
+.send-btn{
+  width:100%;padding:11px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;border:none;border-radius:var(--r-sm);
+  font-size:13.5px;font-weight:700;
+  box-shadow:0 4px 16px rgba(102,126,234,.3);
+  transition:all .18s;display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.send-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(102,126,234,.38)}
+.send-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.add-btn{
+  display:flex;align-items:center;gap:6px;padding:9px 16px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;border:none;border-radius:var(--r-sm);
+  font-size:13px;font-weight:700;white-space:nowrap;
+  box-shadow:0 4px 12px rgba(102,126,234,.3);transition:all .18s;
+}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(102,126,234,.38)}
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:28px;right:28px;z-index:200;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:13px 18px;border-radius:var(--r-sm);box-shadow:0 8px 28px rgba(102,126,234,.4);font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px;animation:tIn .25s ease}
+@keyframes tIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ═══ EMAIL PREVIEW ═══ */
+.pm{background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.pm-hd{background:linear-gradient(135deg,#667eea,#764ba2);padding:16px 20px;color:white;display:flex;align-items:center;gap:12px}
+.pm-body{padding:18px 20px;font-size:13.5px;color:var(--t2);line-height:1.75}
+
+/* ═══ DOCS PAGE ═══ */
+.docs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:20px}
+.doc-full{padding:16px;border:1.5px solid var(--t6);border-radius:var(--r-sm);transition:all .15s;cursor:pointer;background:white}
+.doc-full:hover{border-color:rgba(102,126,234,.35);box-shadow:var(--sh);transform:translateY(-1px)}
+</style>
