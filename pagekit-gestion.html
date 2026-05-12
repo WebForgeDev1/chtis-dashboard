@@ -405,7 +405,7 @@ function Dashboard({ members, set }) {
 }
 
 /* ═══ MEMBERS ═══ */
-function Members({ members, onSelect }) {
+function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
   const [search,setSearch]=useState(""); const [filt,setFilt]=useState("Tous");
   const FILTS = ["Tous","Actif","Inactif","Payée","En attente"];
   const list = useMemo(()=>members.filter(m=>{
@@ -418,7 +418,7 @@ function Members({ members, onSelect }) {
   return (
     <div className="card">
       <div className="card-hd" style={{flexWrap:"wrap",gap:10}}>
-        <div className="card-title" style={{flex:"none"}}>{list.length} membres</div>
+        <div className="card-title" style={{flex:"none"}}>{list.length} membre{list.length>1?"s":""}</div>
         <div style={{flex:1,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           <div className="srch">
             <Icon name="search" size={14} color="#A0AEC0" />
@@ -426,13 +426,13 @@ function Members({ members, onSelect }) {
           </div>
           {FILTS.map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f}</button>)}
         </div>
-        <button className="add-btn"><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>
+        <button className="add-btn" onClick={onAdd}><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>
       </div>
       <table>
-        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th></tr></thead>
+        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th><th>Actions</th></tr></thead>
         <tbody>
           {list.map(m=>(
-            <tr key={m.id} onClick={()=>onSelect(m)}>
+            <tr key={m.id} onClick={()=>onSelect(m)} style={{cursor:"pointer"}}>
               <td>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <div className="mav" style={{background:avGrad(m.id)}}>{ini(m)}</div>
@@ -447,6 +447,20 @@ function Members({ members, onSelect }) {
               <td style={{color:"var(--t3)",fontSize:13}}>{m.ville}</td>
               <td><MBadge s={m.statut} /></td>
               <td><SBadge s={m.cotisation} /></td>
+              <td onClick={e=>e.stopPropagation()}>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>onEdit(m)} style={{padding:"5px 10px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:7,cursor:"pointer",fontSize:12,color:"var(--t2)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                    onMouseOver={e=>{e.currentTarget.style.borderColor="#667eea";e.currentTarget.style.color="#667eea"}}
+                    onMouseOut={e=>{e.currentTarget.style.borderColor="var(--t6)";e.currentTarget.style.color="var(--t2)"}}>
+                    <Icon name="edit" size={12} color="currentColor"/> Modifier
+                  </button>
+                  <button onClick={()=>onDelete(m)} style={{padding:"5px 10px",background:"#FFF5F5",border:"1.5px solid #FED7D7",borderRadius:7,cursor:"pointer",fontSize:12,color:"#C53030",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                    onMouseOver={e=>e.currentTarget.style.background="#FED7D7"}
+                    onMouseOut={e=>e.currentTarget.style.background="#FFF5F5"}>
+                    <Icon name="trash" size={12} color="#C53030"/> Supprimer
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -456,7 +470,7 @@ function Members({ members, onSelect }) {
 }
 
 /* ═══ DRAWER ═══ */
-function Drawer({ m, close }) {
+function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
   if (!m) return null;
   return (
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&close()}>
@@ -487,10 +501,10 @@ function Drawer({ m, close }) {
             <div className="dr-st">Actions</div>
             <div className="act-list">
               <button className="ab ab-p"><Icon name="mail" size={14} color="white" /> Envoyer un e-mail</button>
-              <button className="ab ab-s"><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
-              {m.cotisation!=="payée"&&<button className="ab ab-s"><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
+              <button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
+              {m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
               <button className="ab ab-s"><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
-              <button className="ab ab-d"><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>
+              <button className="ab ab-d" onClick={onDelete}><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>
             </div>
           </div>
         </div>
@@ -1037,20 +1051,171 @@ const PAGES = {
   settings: ["Admin","Paramètres"],
 };
 
+/* ═══ MEMBER MODAL ═══ */
+function MemberModal({ member, onSave, onClose }) {
+  const ROLES = ["Membre","Président","Vice-Président","Secrétaire","Trésorier","Conseil d'Administration"];
+  const [form, setForm] = useState(member ? {...member} : {
+    prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
+    statut:"actif", cotisation:"en attente", montant:25, annee:new Date().getFullYear(), joined: new Date().toISOString().split("T")[0]
+  });
+  const [errors, setErrors] = useState({});
+  function upd(k,v){ setForm(f=>({...f,[k]:v})); if(errors[k]) setErrors(e=>({...e,[k]:""})); }
+  function validate(){
+    const e={};
+    if(!form.prenom.trim()) e.prenom="Requis";
+    if(!form.nom.trim()) e.nom="Requis";
+    if(!form.email.trim()||!form.email.includes("@")) e.email="Email invalide";
+    if(!form.tel.trim()) e.tel="Requis";
+    setErrors(e);
+    return Object.keys(e).length===0;
+  }
+  function save(){ if(!validate()) return; onSave(form); }
+
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:18,padding:"28px 28px 24px",width:520,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
+          <div style={{fontSize:17,fontWeight:800,color:"var(--t1)"}}>{member?"✏️ Modifier le membre":"👤 Ajouter un membre"}</div>
+          <button onClick={onClose} style={{background:"#f3f4f6",border:"none",width:32,height:32,borderRadius:8,fontSize:18,cursor:"pointer",color:"var(--t3)",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Prénom *</div>
+            <input className="ci" value={form.prenom} onChange={e=>upd("prenom",e.target.value)} placeholder="Jean" style={errors.prenom?{borderColor:"#C53030"}:{}}/>
+            {errors.prenom&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.prenom}</div>}
+          </div>
+          <div>
+            <div className="clabel">Nom *</div>
+            <input className="ci" value={form.nom} onChange={e=>upd("nom",e.target.value)} placeholder="Dupont" style={errors.nom?{borderColor:"#C53030"}:{}}/>
+            {errors.nom&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.nom}</div>}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div className="clabel">Email *</div>
+          <input className="ci" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} placeholder="jean@email.fr" style={errors.email?{borderColor:"#C53030"}:{}}/>
+          {errors.email&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.email}</div>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Téléphone *</div>
+            <input className="ci" value={form.tel} onChange={e=>upd("tel",e.target.value)} placeholder="+33 6 12 34 56 78" style={errors.tel?{borderColor:"#C53030"}:{}}/>
+            {errors.tel&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.tel}</div>}
+          </div>
+          <div>
+            <div className="clabel">Ville</div>
+            <input className="ci" value={form.ville} onChange={e=>upd("ville",e.target.value)} placeholder="Le Mans"/>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Rôle</div>
+            <select className="csel" value={form.role} onChange={e=>upd("role",e.target.value)}>
+              {ROLES.map(r=><option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="clabel">Cotisation</div>
+            <select className="csel" value={form.cotisation} onChange={e=>upd("cotisation",e.target.value)}>
+              <option value="payée">Payée</option>
+              <option value="en attente">En attente</option>
+              <option value="impayée">Impayée</option>
+            </select>
+          </div>
+        </div>
+        <div style={{marginBottom:20}}>
+          <div className="clabel">Statut</div>
+          <select className="csel" value={form.statut} onChange={e=>upd("statut",e.target.value)}>
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+          </select>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{padding:"10px 20px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+          <button className="send-btn" style={{width:"auto",padding:"10px 24px"}} onClick={save}>
+            <Icon name="plus" size={14} color="white"/> {member?"Enregistrer":"Ajouter le membre"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ DELETE CONFIRM MODAL ═══ */
+function DeleteModal({ member, onConfirm, onClose }) {
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:18,padding:"28px",width:400,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"#FFF5F5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}>
+            <Icon name="trash" size={24} color="#C53030"/>
+          </div>
+          <div style={{fontSize:17,fontWeight:800,color:"var(--t1)",marginBottom:8}}>Supprimer le membre</div>
+          <div style={{fontSize:14,color:"var(--t3)"}}>Êtes-vous sûr de vouloir supprimer <strong>{member?.prenom} {member?.nom}</strong> ? Cette action est irréversible.</div>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+          <button onClick={onClose} style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+          <button onClick={onConfirm} style={{padding:"10px 22px",background:"#C53030",color:"white",border:"none",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:7}}>
+            <Icon name="trash" size={14} color="white"/> Supprimer définitivement
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
-  const [in_,setIn]=useState(false); const [page,setPage]=useState("dashboard"); const [sel,setSel]=useState(null);
+  const [in_,setIn]=useState(false);
+  const [page,setPage]=useState("dashboard");
+  const [sel,setSel]=useState(null);
+  const [members,setMembers]=useState([...MEMBERS]);
+  const [showAddModal,setShowAddModal]=useState(false);
+  const [editMember,setEditMember]=useState(null);
+  const [deleteMember,setDeleteMember]=useState(null);
+
   if (!in_) return <Login onLogin={()=>setIn(true)} />;
-  function go(p){setPage(p);setSel(null)}
+  function go(p){setPage(p);setSel(null);}
   const [bc,title]=PAGES[page]||["",""];
+
+  function handleAddMember(form){
+    const newM={...form, id:_nextId++, montant:25, annee:new Date().getFullYear()};
+    const updated=[...members, newM];
+    setMembers(updated);
+    MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
+    setShowAddModal(false);
+    go("members");
+  }
+
+  function handleEditMember(form){
+    const updated=members.map(m=>m.id===form.id?{...m,...form}:m);
+    setMembers(updated);
+    MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
+    setEditMember(null);
+    setSel(null);
+  }
+
+  function handleDeleteMember(){
+    const updated=members.filter(m=>m.id!==deleteMember.id);
+    setMembers(updated);
+    MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
+    setDeleteMember(null);
+    setSel(null);
+  }
+
+  function handleMarkPaid(m){
+    const updated=members.map(x=>x.id===m.id?{...x,cotisation:"payée"}:x);
+    setMembers(updated);
+    MEMBERS.length=0; updated.forEach(x=>MEMBERS.push(x));
+    setSel({...m,cotisation:"payée"});
+  }
 
   function render(){
     switch(page){
-      case "dashboard": return <Dashboard members={MEMBERS} set={go} />;
-      case "members":   return <Members members={MEMBERS} onSelect={setSel} />;
+      case "dashboard": return <Dashboard members={members} set={go} />;
+      case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
       case "invoices":  return <Invoices />;
-      case "email":       return <EmailPage members={MEMBERS} />;
-      case "invoice-gen": return <InvoiceGenerator members={MEMBERS} />;
+      case "email":       return <EmailPage members={members} />;
+      case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
       default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
     }
@@ -1060,10 +1225,13 @@ function App() {
     <div className="shell">
       <Sidebar active={page} set={go} logout={()=>setIn(false)} />
       <div className="main">
-        <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn"><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
+        <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
       </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} />}
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} />}
+      {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
+      {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
+      {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
     </div>
   );
 }
@@ -1083,8 +1251,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script>
-// Données fictives des membres — Ch'tis en Maine
-const MEMBERS = [
+// Données des membres — Ch'tis en Maine (mutable)
+let _nextId = 13;
+let MEMBERS = [
   { id: 1, nom: "Dupont", prenom: "Jean-Pierre", email: "jp.dupont@gmail.com", tel: "+33 6 12 34 56 78", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-03-15", role: "Membre" },
   { id: 2, nom: "Lecomte", prenom: "Marie-Claire", email: "mc.lecomte@orange.fr", tel: "+33 6 23 45 67 89", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2015-09-10", role: "Vice-Présidente" },
   { id: 3, nom: "Delacroix", prenom: "Bernard", email: "b.delacroix@laposte.net", tel: "+33 6 34 56 78 90", ville: "Allonnes", statut: "actif", cotisation: "en attente", montant: 25, annee: 2024, joined: "2020-01-22", role: "Membre" },
