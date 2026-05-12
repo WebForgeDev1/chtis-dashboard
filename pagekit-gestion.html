@@ -1176,6 +1176,34 @@ function App() {
   function go(p){setPage(p);setSel(null);}
   const [bc,title]=PAGES[page]||["",""];
 
+  // ── GitHub sync ──
+  const GH_TOKEN = "github_pat_11BXI4EAQ0sYZcekIPqwtF_HJBpPkL1JXqNqEYQXoUR3mEjsCfdWuKiF6ira2dmhqAC6Z";
+  const GH_REPO  = "WebForgeDev1/chtis-dashboard";
+  const GH_FILE  = "membres-ca.json";
+
+  async function syncToGitHub(updatedMembers) {
+    try {
+      // 1. Get current SHA
+      const infoRes = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`, {
+        headers: { Authorization: `Bearer ${GH_TOKEN}`, Accept: "application/vnd.github+json" }
+      });
+      const info = await infoRes.json();
+      const sha = info.sha;
+      // 2. Build CA list — only keep nom + role
+      const caList = updatedMembers.map(m => ({ nom: `${m.prenom} ${m.nom}`, role: m.role }));
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(caList, null, 2))));
+      // 3. Push update
+      await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${GH_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "Mise à jour membres CA", content, sha })
+      });
+      console.log("✅ GitHub synced");
+    } catch(e) {
+      console.error("GitHub sync error:", e);
+    }
+  }
+
   function handleAddMember(form){
     const newM={...form, id:_nextId++, montant:25, annee:new Date().getFullYear()};
     const updated=[...members, newM];
@@ -1183,6 +1211,7 @@ function App() {
     MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
     setShowAddModal(false);
     go("members");
+    syncToGitHub(updated);
   }
 
   function handleEditMember(form){
@@ -1191,6 +1220,7 @@ function App() {
     MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
     setEditMember(null);
     setSel(null);
+    syncToGitHub(updated);
   }
 
   function handleDeleteMember(){
@@ -1199,6 +1229,7 @@ function App() {
     MEMBERS.length=0; updated.forEach(m=>MEMBERS.push(m));
     setDeleteMember(null);
     setSel(null);
+    syncToGitHub(updated);
   }
 
   function handleMarkPaid(m){
@@ -1254,19 +1285,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 // Données des membres — Ch'tis en Maine (mutable)
 let _nextId = 13;
 let MEMBERS = [
-  { id: 1, nom: "Dupont", prenom: "Jean-Pierre", email: "jp.dupont@gmail.com", tel: "+33 6 12 34 56 78", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-03-15", role: "Membre" },
-  { id: 2, nom: "Lecomte", prenom: "Marie-Claire", email: "mc.lecomte@orange.fr", tel: "+33 6 23 45 67 89", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2015-09-10", role: "Vice-Présidente" },
-  { id: 3, nom: "Delacroix", prenom: "Bernard", email: "b.delacroix@laposte.net", tel: "+33 6 34 56 78 90", ville: "Allonnes", statut: "actif", cotisation: "en attente", montant: 25, annee: 2024, joined: "2020-01-22", role: "Membre" },
-  { id: 4, nom: "Fontaine", prenom: "Isabelle", email: "i.fontaine@wanadoo.fr", tel: "+33 6 45 67 89 01", ville: "La Flèche", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2019-06-05", role: "Trésorière" },
-  { id: 5, nom: "Mercier", prenom: "Robert", email: "r.mercier@sfr.fr", tel: "+33 6 56 78 90 12", ville: "Sablé-sur-Sarthe", statut: "inactif", cotisation: "impayée", montant: 25, annee: 2024, joined: "2016-11-30", role: "Membre" },
-  { id: 6, nom: "Leclercq", prenom: "Sylvie", email: "s.leclercq@gmail.com", tel: "+33 6 67 89 01 23", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2021-02-14", role: "Secrétaire" },
-  { id: 7, nom: "Beaumont", prenom: "Henri", email: "h.beaumont@free.fr", tel: "+33 6 78 90 12 34", ville: "Mamers", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2013-07-20", role: "Président" },
-  { id: 8, nom: "Poulain", prenom: "Nathalie", email: "n.poulain@hotmail.fr", tel: "+33 6 89 01 23 45", ville: "Le Mans", statut: "actif", cotisation: "en attente", montant: 25, annee: 2024, joined: "2022-04-01", role: "Membre" },
-  { id: 9, nom: "Vasseur", prenom: "Didier", email: "d.vasseur@gmail.com", tel: "+33 6 90 12 34 56", ville: "La Ferté-Bernard", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2017-08-18", role: "Membre" },
-  { id: 10, nom: "Garnier", prenom: "Christine", email: "c.garnier@orange.fr", tel: "+33 6 01 23 45 67", ville: "Le Mans", statut: "inactif", cotisation: "impayée", montant: 25, annee: 2024, joined: "2014-05-11", role: "Membre" },
-  { id: 11, nom: "Moreau", prenom: "Thierry", email: "t.moreau@laposte.net", tel: "+33 6 11 22 33 44", ville: "Coulaines", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2023-01-10", role: "Membre" },
-  { id: 12, nom: "Laurent", prenom: "Brigitte", email: "b.laurent@sfr.fr", tel: "+33 6 22 33 44 55", ville: "Le Mans", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2020-10-25", role: "Membre" },
+  { id: 1, nom: "VANDENBERGHE", prenom: "Bernadette", email: "contact@chtis-en-maine.fr", tel: "+33 6 80 08 78 28", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Présidente" },
+  { id: 2, nom: "HOGU", prenom: "Marie-Geneviève", email: "contact@chtis-en-maine.fr", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Secrétaire" },
+  { id: 3, nom: "LIGAUD", prenom: "Gérard", email: "contact@chtis-en-maine.fr", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Trésorier" },
+  { id: 4, nom: "BOULANGER", prenom: "Eric", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 5, nom: "DORLENCOURT", prenom: "Francis", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 6, nom: "GRIMARD", prenom: "Françoise", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 7, nom: "GUILLOIS", prenom: "Véronique", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 8, nom: "MOREAU", prenom: "René", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 9, nom: "PARASIE", prenom: "Yann", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
+  { id: 10, nom: "SOURTY", prenom: "Eliane", email: "", tel: "", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Membre" },
 ];
+
 
 const INVOICES = [
   { id: "F-2024-001", memberId: 1, nom: "Dupont Jean-Pierre", date: "2024-01-15", montant: 25, statut: "payée", type: "Cotisation annuelle 2024" },
