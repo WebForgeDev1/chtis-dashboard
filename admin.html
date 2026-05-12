@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — Ch'tis en Maine</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:linear-gradient(135deg,#6366f1,#8b5cf6);
+  --primary-c:#6366f1;--primary-d:#4f46e5;
+  --green:#059669;--yellow:#d97706;--red:#dc2626;--blue:#2563eb;
+  --bg:#f1f5f9;--white:#fff;
+  --t1:#1e293b;--t2:#334155;--t3:#64748b;--t4:#94a3b8;--t5:#cbd5e1;--t6:#e2e8f0;
+  --r:14px;--r-sm:10px;--sh:0 2px 16px rgba(0,0,0,.07);--sh-lg:0 8px 32px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased}
+input,button,select,textarea{font-family:inherit}
+button{cursor:pointer;border:none}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--t5);border-radius:4px}
+
+/* ── LOGIN ── */
+.lp{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);position:relative;overflow:hidden}
+.lp::before{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:rgba(99,102,241,.12);top:-100px;right:-100px}
+.lp::after{content:'';position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(139,92,246,.1);bottom:-80px;left:-60px}
+.lc{background:rgba(255,255,255,.97);border-radius:22px;padding:44px 40px;width:400px;box-shadow:0 32px 80px rgba(0,0,0,.25);position:relative;z-index:1}
+.lb{text-align:center;margin-bottom:30px}
+.li{width:62px;height:62px;border-radius:18px;background:var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;box-shadow:0 10px 28px rgba(99,102,241,.4)}
+.lb h1{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.4px}
+.lb p{font-size:13px;color:var(--t3);margin-top:5px}
+.admin-tag{display:inline-block;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px;border:1px solid #fcd34d}
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:11.5px;font-weight:700;color:var(--t2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.fi{width:100%;padding:11px 14px;border:1.5px solid var(--t6);border-radius:var(--r-sm);font-size:14px;color:var(--t1);background:#f8fafc;outline:none;transition:all .18s}
+.fi:focus{border-color:var(--primary-c);background:white;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.fi::placeholder{color:var(--t4)}
+.lbtn{width:100%;padding:12px;background:var(--primary);color:white;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:700;box-shadow:0 6px 20px rgba(99,102,241,.38);transition:all .2s;margin-top:4px}
+.lbtn:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(99,102,241,.48)}
+.lerr{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:var(--r-sm);padding:10px 14px;font-size:13px;margin-bottom:14px}
+.lhint{text-align:center;font-size:11.5px;color:var(--t4);margin-top:14px}
+
+/* ── SHELL ── */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sb{width:240px;background:#1e1b4b;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-logo{display:flex;align-items:center;gap:11px;padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo-icon{width:36px;height:36px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(99,102,241,.4)}
+.sb-logo-name{color:white;font-size:14px;font-weight:800;letter-spacing:-.2px}
+.sb-logo-sub{color:rgba(255,255,255,.35);font-size:10px;margin-top:1px}
+.sb-sec{font-size:10px;font-weight:700;color:rgba(255,255,255,.28);padding:16px 18px 5px;text-transform:uppercase;letter-spacing:1.2px}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:rgba(255,255,255,.48);font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all .15s;position:relative}
+.ni:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.85)}
+.ni.active{background:rgba(99,102,241,.22);color:white;border-left-color:#6366f1;font-weight:700}
+.ni-ico{font-size:15px;width:22px;text-align:center;flex-shrink:0}
+.ni-badge{margin-left:auto;background:#dc2626;color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sb-bot{margin-top:auto;border-top:1px solid rgba(255,255,255,.08);padding:10px 0}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 18px}
+.sb-av{width:34px;height:34px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:800;flex-shrink:0}
+.sb-uname{color:white;font-size:12px;font-weight:700}
+.sb-urole{color:rgba(255,255,255,.35);font-size:10px}
+.logout-ni{display:flex;align-items:center;gap:10px;padding:8px 18px;cursor:pointer;color:rgba(239,68,68,.6);font-size:13px;transition:all .15s}
+.logout-ni:hover{color:#ef4444;background:rgba(239,68,68,.08)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:58px;background:white;border-bottom:1px solid var(--t6);display:flex;align-items:center;padding:0 26px;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 8px rgba(0,0,0,.04)}
+#page-title{font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-.3px}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--t6);border-radius:var(--r-sm);padding:8px 14px;width:220px;transition:all .18s}
+.tb-search:focus-within{background:white;border-color:var(--primary-c);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+.tb-search input{border:none;background:transparent;outline:none;font-size:13px;color:var(--t1);width:100%}
+.tb-search input::placeholder{color:var(--t4)}
+.content{flex:1;overflow-y:auto;padding:24px 26px}
+
+/* ── PAGES ── */
+.page{display:none}.page.active{display:block}
+
+/* ── STAT CARDS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.sc{border-radius:var(--r);padding:20px 22px;color:white;position:relative;overflow:hidden;box-shadow:var(--sh-lg);transition:transform .18s}
+.sc:hover{transform:translateY(-2px)}
+.sc::before{content:'';position:absolute;right:-20px;bottom:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.08)}
+.sc::after{content:'';position:absolute;right:20px;bottom:-35px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.06)}
+.sc-label{font-size:11px;font-weight:700;opacity:.82;letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px}
+.sc-val{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.sc-trend{font-size:12px;opacity:.78;margin-top:6px;font-weight:500}
+
+/* ── CARDS ── */
+.card{background:white;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:18px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid var(--t6);flex-wrap:wrap;gap:10px}
+.card-title{font-size:14.5px;font-weight:800;color:var(--t1)}
+
+/* ── TABLE ── */
+.ck-table{width:100%;border-collapse:collapse;font-size:13px}
+.ck-table th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.05em;background:#fafafa;border-bottom:1px solid var(--t6)}
+.ck-table td{padding:11px 16px;color:var(--t2);border-bottom:1px solid #f5f3ff;vertical-align:middle}
+.ck-table tr:last-child td{border-bottom:none}
+.ck-table tr:hover td{background:#faf8ff}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.b-green{background:#f0fdf4;color:#059669}.b-yellow{background:#fffbeb;color:#d97706}
+.b-red{background:#fef2f2;color:#dc2626}.b-blue{background:#eff6ff;color:#2563eb}
+.b-gray{background:#f3f4f6;color:#6b7280}.b-purple{background:#f5f3ff;color:#6366f1}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+/* ── BUTTONS ── */
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:white;box-shadow:0 4px 14px rgba(99,102,241,.3)}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+.btn-outline{background:white;border:1.5px solid var(--t6);color:var(--t2)}
+.btn-outline:hover{border-color:var(--primary-c);color:var(--primary-c)}
+.btn-danger{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca}
+.btn-danger:hover{background:#fee2e2}
+.btn-success{background:#f0fdf4;color:#059669;border:1.5px solid #bbf7d0}
+.btn-sm{padding:5px 11px;font-size:11px;border-radius:6px}
+.btn-warning{background:#fffbeb;color:#d97706;border:1.5px solid #fde68a}
+
+/* ── FORMS ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{margin-bottom:0}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.fi{width:100%;padding:10px 13px;border:1.5px solid var(--t6);border-radius:var(--r-sm);font-size:13px;color:var(--t1);background:#f8fafc;outline:none;transition:all .18s}
+.fi:focus{border-color:var(--primary-c);background:white;box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+.fi::placeholder{color:var(--t4)}
+.fi-error{border-color:#dc2626!important}
+.ferr{font-size:11px;color:#dc2626;margin-top:3px}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:18px;padding:28px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2);animation:mIn .2s ease}
+@keyframes mIn{from{opacity:0;transform:translateY(-16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:800;color:var(--t1)}
+.modal-close{background:#f3f4f6;border:none;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;color:var(--t3);display:flex;align-items:center;justify-content:center;line-height:1}
+.modal-close:hover{background:#e5e7eb}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+/* ── ACTIVITY ── */
+.act-item{display:flex;align-items:flex-start;gap:11px;padding:10px 20px;border-bottom:1px solid var(--t6)}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.act-text{font-size:12.5px;color:var(--t2)}
+.act-time{font-size:11px;color:var(--t4);margin-top:2px}
+
+/* ── CHART ── */
+.chart-bar-wrap{padding:20px;display:flex;align-items:flex-end;gap:8px;height:160px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;border-radius:6px 6px 0 0;transition:all .4s;cursor:pointer;position:relative}
+.bar:hover{opacity:.85}
+.bar-label{font-size:10px;color:var(--t4);font-weight:600}
+.bar-val{font-size:11px;color:var(--t2);font-weight:700}
+
+/* ── EMAIL HISTORY ── */
+.email-item{padding:14px 20px;border-bottom:1px solid var(--t6);transition:background .12s}
+.email-item:hover{background:#faf8ff}
+.email-item:last-child{border-bottom:none}
+.email-subject{font-size:13.5px;font-weight:700;color:var(--t1);margin-bottom:3px}
+.email-meta{font-size:12px;color:var(--t4)}
+
+/* ── INVOICE PREVIEW ── */
+.inv-preview{border:1px solid var(--t6);border-radius:var(--r-sm);padding:24px;font-size:13px}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.inv-logo{display:flex;align-items:center;gap:10px}
+.inv-logo-icon{width:38px;height:38px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:16px}
+.inv-num{text-align:right}
+.inv-divider{height:3px;background:var(--primary);border-radius:2px;margin:16px 0}
+.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.inv-section-label{font-size:10px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.inv-table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.inv-table th{padding:8px 12px;background:#f8fafc;font-size:11px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.04em;text-align:left;border-bottom:1px solid var(--t6)}
+.inv-table td{padding:10px 12px;border-bottom:1px solid var(--t6);font-size:13px}
+.inv-total{background:var(--primary);color:white;border-radius:var(--r-sm);padding:14px 18px;text-align:right}
+.inv-total-label{font-size:11px;opacity:.8;margin-bottom:3px}
+.inv-total-val{font-size:22px;font-weight:800}
+
+/* ── NOTIF ── */
+#notif{position:fixed;bottom:24px;right:24px;background:#1e1b4b;color:white;padding:12px 18px;border-radius:12px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.25);max-width:320px}
+#notif.show{opacity:1;transform:translateY(0)}
+#notif.success{background:linear-gradient(135deg,#059669,#10b981)}
+#notif.error{background:linear-gradient(135deg,#dc2626,#ef4444)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:6px;margin-bottom:16px}
+.tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--t6);background:white;color:var(--t3);cursor:pointer;transition:all .15s;font-family:inherit}
+.tab:hover{border-color:var(--primary-c);color:var(--primary-c)}
+.tab.active{background:var(--primary);border-color:transparent;color:white;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+
+/* ── MEMBER AVATAR ── */
+.mav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:white;flex-shrink:0}
+.mav-lg{width:52px;height:52px;font-size:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:white;flex-shrink:0}
+
+/* ── DRAWER ── */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:900;justify-content:flex-end;backdrop-filter:blur(2px)}
+.drawer-overlay.open{display:flex}
+.drawer{width:400px;background:white;height:100%;overflow-y:auto;box-shadow:-8px 0 40px rgba(0,0,0,.15);animation:drIn .22s ease}
+@keyframes drIn{from{transform:translateX(32px);opacity:0}to{transform:translateX(0);opacity:1}}
+.dr-top{background:var(--primary);padding:28px 22px 22px;color:white;position:relative}
+.dr-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.18);border:none;color:white;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dr-close:hover{background:rgba(255,255,255,.28)}
+.dr-body{padding:20px 22px}
+.dr-section{font-size:11px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.dr-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--t6)}
+.dr-row:last-child{border-bottom:none}
+.dr-ico{width:30px;height:30px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.dr-label{font-size:11px;color:var(--t4);font-weight:500}
+.dr-val{font-size:13.5px;font-weight:600;color:var(--t1);margin-top:1px}
+.dr-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+
+/* ── DOCS ── */
+.docs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px}
+.doc-card{border:1.5px solid var(--t6);border-radius:var(--r-sm);padding:14px;transition:all .15s;cursor:pointer}
+.doc-card:hover{border-color:rgba(99,102,241,.3);box-shadow:var(--sh);transform:translateY(-1px)}
+.doc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:20px}
+.doc-name{font-size:12.5px;font-weight:700;color:var(--t1);margin-bottom:3px;line-height:1.3}
+.doc-meta{font-size:11px;color:var(--t4)}
+.doc-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+
+/* ── EVENTS ── */
+.event-item{display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-bottom:1px solid var(--t6);transition:background .12s}
+.event-item:hover{background:#faf8ff}
+.event-item:last-child{border-bottom:none}
+.event-date-box{background:var(--primary);color:white;border-radius:10px;padding:8px 12px;text-align:center;flex-shrink:0;min-width:52px}
+.event-day{font-size:20px;font-weight:800;line-height:1}
+.event-month{font-size:10px;font-weight:700;opacity:.85;text-transform:uppercase}
+.event-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px}
+.event-info{font-size:12px;color:var(--t3)}
+
+/* ── TWO COL ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:0}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ LOGIN ══ -->
+<div id="login-view" class="lp">
+  <div class="lc">
+    <div class="lb">
+      <div class="li">🛡️</div>
+      <h1>Ch'tis en Maine</h1>
+      <p>Espace administrateur</p>
+      <span class="admin-tag">⚡ Accès Admin</span>
+    </div>
+    <div id="lerr" class="lerr" style="display:none">Identifiants incorrects. Veuillez réessayer.</div>
+    <div class="fg" style="margin-bottom:16px">
+      <label class="fl">Email administrateur</label>
+      <input class="fi" id="l-email" type="email" placeholder="admin@chtis-en-maine.fr"/>
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label class="fl">Mot de passe</label>
+      <input class="fi" id="l-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="lbtn" onclick="doLogin()">🔐 Connexion administrateur</button>
+    <p class="lhint">Démo : admin@chtis-en-maine.fr / Admin2024!</p>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dash-view" class="shell" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sb">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🏠</div>
+      <div>
+        <div class="sb-logo-name">Ch'tis en Maine</div>
+        <div class="sb-logo-sub">Administration</div>
+      </div>
+    </div>
+
+    <div class="sb-sec">Principal</div>
+    <div class="ni active" onclick="goPage('dashboard',this)"><span class="ni-ico">⊞</span> Tableau de bord</div>
+    <div class="ni" onclick="goPage('membres',this)"><span class="ni-ico">👥</span> Membres</div>
+    <div class="ni" onclick="goPage('factures',this)"><span class="ni-ico">🧾</span> Factures <span class="ni-badge" id="badge-factures">3</span></div>
+    <div class="ni" onclick="goPage('documents',this)"><span class="ni-ico">📁</span> Documents</div>
+
+    <div class="sb-sec">Outils</div>
+    <div class="ni" onclick="goPage('generateur',this)"><span class="ni-ico">✨</span> Générateur PDF</div>
+    <div class="ni" onclick="goPage('emails',this)"><span class="ni-ico">✉️</span> Emails & Actualités</div>
+    <div class="ni" onclick="goPage('historique',this)"><span class="ni-ico">📋</span> Historique emails</div>
+    <div class="ni" onclick="goPage('evenements',this)"><span class="ni-ico">📅</span> Événements</div>
+
+    <div class="sb-bot">
+      <div class="logout-ni" onclick="logout()"><span>↩</span> Déconnexion</div>
+      <div class="sb-user">
+        <div class="sb-av">AD</div>
+        <div>
+          <div class="sb-uname">Administrateur</div>
+          <div class="sb-urole">Accès total</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <span id="page-title">Tableau de bord</span>
+      <div class="tb-right">
+        <div class="tb-search">
+          <span style="color:var(--t4);font-size:14px">🔍</span>
+          <input id="global-search" placeholder="Rechercher un membre..." oninput="globalSearch(this.value)"/>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-member')">+ Nouveau membre</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ DASHBOARD PAGE ══ -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="sc" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+            <div class="sc-label">Membres actifs</div>
+            <div class="sc-val" id="stat-membres">10</div>
+            <div class="sc-trend">↑ +2 ce mois</div>
+          </div>
+          <div class="sc" style="background:linear-gradient(135deg,#059669,#10b981)">
+            <div class="sc-label">Cotisations payées</div>
+            <div class="sc-val" id="stat-payes">225 €</div>
+            <div class="sc-trend">9 membres réglés</div>
+          </div>
+          <div class="sc" style="background:linear-gradient(135deg,#d97706,#f59e0b)">
+            <div class="sc-label">En attente</div>
+            <div class="sc-val" id="stat-attente">50 €</div>
+            <div class="sc-trend">2 membres en attente</div>
+          </div>
+          <div class="sc" style="background:linear-gradient(135deg,#dc2626,#ef4444)">
+            <div class="sc-label">Impayées</div>
+            <div class="sc-val" id="stat-impayes">50 €</div>
+            <div class="sc-trend">⚠️ 2 membres</div>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-bottom:18px">
+          <!-- Chart -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">Cotisations par mois</span></div>
+            <div class="chart-bar-wrap" id="chart-bars"></div>
+          </div>
+          <!-- Activity -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">Activité récente</span></div>
+            <div id="activity-list"></div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <!-- Recent members -->
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Derniers membres</span>
+              <button class="btn btn-outline btn-sm" onclick="goPage('membres',document.querySelectorAll('.ni')[1])">Voir tout</button>
+            </div>
+            <table class="ck-table" id="dash-members-table">
+              <thead><tr><th>Membre</th><th>Cotisation</th><th>Statut</th></tr></thead>
+              <tbody id="dash-members-tbody"></tbody>
+            </table>
+          </div>
+          <!-- Unpaid -->
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">⚠️ Relances nécessaires</span>
+              <button class="btn btn-warning btn-sm" onclick="goPage('emails',document.querySelectorAll('.ni')[5])">Envoyer relances</button>
+            </div>
+            <table class="ck-table">
+              <thead><tr><th>Membre</th><th>Montant</th><th>Action</th></tr></thead>
+              <tbody id="unpaid-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MEMBRES PAGE ══ -->
+      <div class="page" id="page-membres">
+        <div class="tabs">
+          <button class="tab active" onclick="filterMembers('tous',this)">Tous (<span id="count-tous">12</span>)</button>
+          <button class="tab" onclick="filterMembers('actif',this)">Actifs (<span id="count-actifs">10</span>)</button>
+          <button class="tab" onclick="filterMembers('inactif',this)">Inactifs (<span id="count-inactifs">2</span>)</button>
+          <button class="tab" onclick="filterMembers('impaye',this)">Impayés (<span id="count-impayes">2</span>)</button>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title" id="membres-count-title">12 membres</span>
+            <div style="display:flex;gap:8px">
+              <input class="fi" style="width:200px" placeholder="🔍 Rechercher..." oninput="filterMembersSearch(this.value)" id="member-search"/>
+              <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-member')">+ Ajouter</button>
+            </div>
+          </div>
+          <table class="ck-table">
+            <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Rôle</th><th>Statut</th><th>Cotisation</th><th>Actions</th></tr></thead>
+            <tbody id="membres-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ FACTURES PAGE ══ -->
+      <div class="page" id="page-factures">
+        <div class="tabs">
+          <button class="tab active" onclick="filterInvoices('toutes',this)">Toutes (12)</button>
+          <button class="tab" onclick="filterInvoices('payée',this)">Payées (9)</button>
+          <button class="tab" onclick="filterInvoices('en attente',this)">En attente (2)</button>
+          <button class="tab" onclick="filterInvoices('impayée',this)">Impayées (2)</button>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">Factures 2024</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:13px;color:var(--t3)">Total encaissé : <strong style="color:#059669" id="total-encaisse">225 €</strong></span>
+              <button class="btn btn-primary btn-sm" onclick="goPage('generateur',document.querySelectorAll('.ni')[4])">+ Générer facture</button>
+            </div>
+          </div>
+          <table class="ck-table">
+            <thead><tr><th>N° Facture</th><th>Membre</th><th>Date</th><th>Objet</th><th>Montant</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody id="factures-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ DOCUMENTS PAGE ══ -->
+      <div class="page" id="page-documents">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">Documents de l'association</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm" onclick="showNotif('Accédez au Stockage Pagekit pour gérer les fichiers','')">📂 Stockage Pagekit</button>
+              <button class="btn btn-primary btn-sm" onclick="showNotif('Sélectionnez un fichier à uploader','success')">+ Ajouter</button>
+            </div>
+          </div>
+          <div class="docs-grid">
+            <div class="doc-card"><div class="doc-icon" style="background:#fef2f2">📄</div><div class="doc-name">Compte-rendu AG 2024.pdf</div><div class="doc-meta">Réunions · 28/04/2024 · 1.2 MB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+            <div class="doc-card"><div class="doc-icon" style="background:#eff6ff">📋</div><div class="doc-name">Statuts de l'association.pdf</div><div class="doc-meta">Juridique · 01/01/2024 · 845 KB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+            <div class="doc-card"><div class="doc-icon" style="background:#f0fdf4">📊</div><div class="doc-name">Budget prévisionnel 2024.xlsx</div><div class="doc-meta">Finances · 01/03/2024 · 235 KB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+            <div class="doc-card"><div class="doc-icon" style="background:#fffbeb">📝</div><div class="doc-name">Formulaire adhésion.docx</div><div class="doc-meta">Formulaires · 01/01/2024 · 320 KB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+            <div class="doc-card"><div class="doc-icon" style="background:#fef2f2">📄</div><div class="doc-name">Règlement intérieur.pdf</div><div class="doc-meta">Juridique · 01/01/2024 · 412 KB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+            <div class="doc-card"><div class="doc-icon" style="background:#f5f3ff">📑</div><div class="doc-name">Rapport activité 2023.pdf</div><div class="doc-meta">Rapports · 15/02/2024 · 1.8 MB</div><div class="doc-actions"><button class="btn btn-outline btn-sm" onclick="showNotif('Téléchargement démarré','success')">⬇ Télécharger</button><button class="btn btn-danger btn-sm" onclick="showNotif('Document supprimé','error')">🗑</button></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ GENERATEUR PAGE ══ -->
+      <div class="page" id="page-generateur">
+        <div class="two-col">
+          <!-- Form -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">✨ Générateur de facture PDF</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <label class="fl">Choisir un membre</label>
+                <select class="fi" id="gen-membre" onchange="pickGenMember(this)">
+                  <option value="">— Sélectionner un membre —</option>
+                </select>
+              </div>
+              <div class="form-grid">
+                <div><label class="fl">Prénom</label><input class="fi" id="gen-prenom" placeholder="Jean"/></div>
+                <div><label class="fl">Nom</label><input class="fi" id="gen-nom" placeholder="Dupont"/></div>
+              </div>
+              <div><label class="fl">Email</label><input class="fi" id="gen-email" type="email" placeholder="jean@email.fr"/></div>
+              <div class="form-grid">
+                <div><label class="fl">N° Facture</label><input class="fi" id="gen-num" value="F-2024-013"/></div>
+                <div><label class="fl">Date</label><input class="fi" id="gen-date" type="date"/></div>
+              </div>
+              <div class="form-grid">
+                <div><label class="fl">Montant (€)</label><input class="fi" id="gen-montant" type="number" value="25" oninput="updateTotal()"/></div>
+                <div><label class="fl">TVA (%)</label><input class="fi" id="gen-tva" type="number" value="0" oninput="updateTotal()"/></div>
+              </div>
+              <div><label class="fl">Objet / Prestation</label><input class="fi" id="gen-objet" value="Cotisation annuelle 2024"/></div>
+              <div style="background:#f5f3ff;border-radius:var(--r-sm);padding:14px 16px">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:var(--t3)"><span>Sous-total HT</span><span id="t-ht">25,00 €</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--t3)"><span>TVA</span><span id="t-tva">0,00 €</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:var(--t1);border-top:1px solid #ede9fe;padding-top:8px"><span>Total TTC</span><span id="t-ttc" style="color:#6366f1">25,00 €</span></div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-outline" style="flex:1" onclick="updatePreview()">👁 Aperçu</button>
+                <button class="btn btn-primary" style="flex:1" onclick="generatePDF()">⬇ Télécharger PDF</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">Aperçu de la facture</span></div>
+            <div style="padding:20px" id="invoice-preview">
+              <div class="inv-preview">
+                <div class="inv-header">
+                  <div class="inv-logo">
+                    <div class="inv-logo-icon">🏠</div>
+                    <div>
+                      <div style="font-weight:800;font-size:14px;color:var(--t1)">Ch'tis en Maine</div>
+                      <div style="font-size:11px;color:var(--t4)">Association loi 1901</div>
+                    </div>
+                  </div>
+                  <div class="inv-num">
+                    <div style="font-size:20px;font-weight:900;color:var(--t1);text-transform:uppercase;letter-spacing:.05em">FACTURE</div>
+                    <div style="font-size:12px;color:#6366f1;font-weight:700;margin-top:2px" id="prev-num">N° F-2024-013</div>
+                    <div style="font-size:11px;color:var(--t4);margin-top:1px" id="prev-date">Date : —</div>
+                  </div>
+                </div>
+                <div class="inv-divider"></div>
+                <div class="inv-grid">
+                  <div>
+                    <div class="inv-section-label">Facturé à</div>
+                    <div style="font-weight:700;font-size:14px;color:var(--t1)" id="prev-name">—</div>
+                    <div style="font-size:12px;color:var(--t3);margin-top:2px" id="prev-email">—</div>
+                  </div>
+                  <div>
+                    <div class="inv-section-label">Émis par</div>
+                    <div style="font-weight:700;font-size:14px;color:var(--t1)">Ch'tis en Maine</div>
+                    <div style="font-size:12px;color:var(--t3);margin-top:2px">contact@chtis-en-maine.fr</div>
+                    <div style="font-size:12px;color:var(--t3)">Sarthe, Pays de la Loire</div>
+                  </div>
+                </div>
+                <table class="inv-table">
+                  <thead><tr><th>Description</th><th>Qté</th><th style="text-align:right">Total</th></tr></thead>
+                  <tbody><tr><td id="prev-objet">Cotisation annuelle 2024</td><td>1</td><td style="text-align:right;font-weight:700" id="prev-ht">25,00 €</td></tr></tbody>
+                </table>
+                <div class="inv-total">
+                  <div class="inv-total-label">Montant total TTC</div>
+                  <div class="inv-total-val" id="prev-ttc">25,00 €</div>
+                </div>
+                <div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:var(--r-sm);font-size:11.5px;color:var(--t4);text-align:center">
+                  Merci de votre confiance — Ch'tis en Maine · Association loi 1901 · contact@chtis-en-maine.fr
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ EMAILS PAGE ══ -->
+      <div class="page" id="page-emails">
+        <div class="two-col">
+          <div class="card">
+            <div class="card-hd"><span class="card-title">✉️ Envoyer un email</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <label class="fl">Destinataires</label>
+                <select class="fi" id="email-dest">
+                  <option value="all">Tous les membres actifs (10)</option>
+                  <option value="unpaid">Cotisations impayées (2)</option>
+                  <option value="pending">Cotisations en attente (2)</option>
+                  <option value="individual">Membre individuel</option>
+                </select>
+              </div>
+              <div>
+                <label class="fl">Template</label>
+                <select class="fi" onchange="applyTemplate(this.value)">
+                  <option value="relance">Relance cotisation</option>
+                  <option value="info">Information générale</option>
+                  <option value="evenement">Invitation événement</option>
+                  <option value="bienvenue">Bienvenue nouveau membre</option>
+                  <option value="custom">Message personnalisé</option>
+                </select>
+              </div>
+              <div><label class="fl">Objet</label><input class="fi" id="email-subject" value="Relance cotisation 2024 — Ch'tis en Maine"/></div>
+              <div><label class="fl">Message</label><textarea class="fi" id="email-body" style="min-height:130px;resize:vertical" placeholder="Votre message...">Bonjour,
+
+Nous vous rappelons que votre cotisation 2024 de 25€ est toujours en attente de règlement.
+
+Merci de procéder au paiement dans les meilleurs délais.
+
+Cordialement,
+L'administration — Ch'tis en Maine
+contact@chtis-en-maine.fr</textarea></div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="sendEmail()">✉️ Envoyer l'email</button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="card">
+            <div class="card-hd"><span class="card-title">Aperçu</span></div>
+            <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:16px 20px;color:white;display:flex;align-items:center;gap:12px">
+              <div style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px">✉️</div>
+              <div>
+                <div style="font-size:11px;opacity:.75">Ch'tis en Maine</div>
+                <div style="font-size:15px;font-weight:800" id="email-prev-subject">Relance cotisation 2024</div>
+              </div>
+            </div>
+            <div style="padding:18px 20px;font-size:13.5px;color:var(--t2);line-height:1.75" id="email-prev-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ HISTORIQUE EMAILS PAGE ══ -->
+      <div class="page" id="page-historique">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">📋 Historique des emails envoyés</span>
+            <span style="font-size:13px;color:var(--t4)" id="history-count">0 emails envoyés</span>
+          </div>
+          <div id="email-history-list">
+            <div style="padding:40px;text-align:center;color:var(--t4)">
+              <div style="font-size:32px;margin-bottom:10px">📭</div>
+              <div style="font-size:14px;font-weight:600">Aucun email envoyé pour l'instant</div>
+              <div style="font-size:13px;margin-top:4px">Les emails envoyés apparaîtront ici</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ EVENEMENTS PAGE ══ -->
+      <div class="page" id="page-evenements">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">📅 Événements</span>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-event')">+ Ajouter</button>
+          </div>
+          <div id="events-list">
+            <div class="event-item">
+              <div class="event-date-box"><div class="event-day">15</div><div class="event-month">Mar</div></div>
+              <div style="flex:1">
+                <div class="event-title">Assemblée Générale 2024</div>
+                <div class="event-info">📍 Salle des fêtes, Le Mans · 18h00 · 12 participants</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="showNotif('Modifier événement','')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="showNotif('Événement supprimé','error')">🗑</button>
+              </div>
+            </div>
+            <div class="event-item">
+              <div class="event-date-box"><div class="event-day">22</div><div class="event-month">Juin</div></div>
+              <div style="flex:1">
+                <div class="event-title">Repas du Nord</div>
+                <div class="event-info">📍 Restaurant La Ch'tiote, Le Mans · 12h00 · 30 participants</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="showNotif('Modifier événement','')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="showNotif('Événement supprimé','error')">🗑</button>
+              </div>
+            </div>
+            <div class="event-item">
+              <div class="event-date-box"><div class="event-day">14</div><div class="event-month">Juil</div></div>
+              <div style="flex:1">
+                <div class="event-title">Fête de la Ch'ti culture</div>
+                <div class="event-info">📍 Parc de la Sarthe · 10h00 · Inscriptions ouvertes</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="showNotif('Modifier événement','')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="showNotif('Événement supprimé','error')">🗑</button>
+              </div>
+            </div>
+            <div class="event-item">
+              <div class="event-date-box"><div class="event-day">05</div><div class="event-month">Oct</div></div>
+              <div style="flex:1">
+                <div class="event-title">Sortie annuelle en Normandie</div>
+                <div class="event-info">📍 Normandie · Journée entière · 25 participants</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="showNotif('Modifier événement','')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="showNotif('Événement supprimé','error')">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /dash -->
+</div><!-- /app -->
+
+<!-- ══ MODAL AJOUTER MEMBRE ══ -->
+<div class="modal-overlay" id="modal-add-member">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-title" id="modal-member-title">👤 Ajouter un membre</span>
+      <button class="modal-close" onclick="closeModal('modal-add-member')">✕</button>
+    </div>
+    <input type="hidden" id="edit-member-id" value=""/>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div><label class="fl">Prénom *</label><input class="fi" id="m-prenom" placeholder="Jean"/><div class="ferr" id="e-prenom"></div></div>
+      <div><label class="fl">Nom *</label><input class="fi" id="m-nom" placeholder="Dupont"/><div class="ferr" id="e-nom"></div></div>
+    </div>
+    <div style="margin-bottom:14px"><label class="fl">Email *</label><input class="fi" id="m-email" type="email" placeholder="jean@email.fr"/><div class="ferr" id="e-email"></div></div>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div><label class="fl">Téléphone</label><input class="fi" id="m-tel" placeholder="+33 6 12 34 56 78"/></div>
+      <div><label class="fl">Ville</label><input class="fi" id="m-ville" placeholder="Le Mans"/></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div><label class="fl">Rôle</label>
+        <select class="fi" id="m-role">
+          <option>Membre</option><option>Président</option><option>Vice-Président</option>
+          <option>Secrétaire</option><option>Trésorier</option><option>Conseil d'Administration</option>
+        </select>
+      </div>
+      <div><label class="fl">Cotisation</label>
+        <select class="fi" id="m-cotisation">
+          <option value="payée">Payée</option><option value="en attente">En attente</option><option value="impayée">Impayée</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:14px"><label class="fl">Statut</label>
+      <select class="fi" id="m-statut"><option value="actif">Actif</option><option value="inactif">Inactif</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-member')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveMember()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL SUPPRIMER MEMBRE ══ -->
+<div class="modal-overlay" id="modal-delete-member">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd">
+      <span class="modal-title">🗑 Supprimer le membre</span>
+      <button class="modal-close" onclick="closeModal('modal-delete-member')">✕</button>
+    </div>
+    <p style="font-size:14px;color:var(--t2);margin-bottom:8px">Êtes-vous sûr de vouloir supprimer <strong id="delete-member-name"></strong> ?</p>
+    <p style="font-size:13px;color:var(--t4)">Cette action est irréversible.</p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-delete-member')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">🗑 Supprimer définitivement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL AJOUTER EVENEMENT ══ -->
+<div class="modal-overlay" id="modal-add-event">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hd">
+      <span class="modal-title">📅 Ajouter un événement</span>
+      <button class="modal-close" onclick="closeModal('modal-add-event')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div><label class="fl">Titre *</label><input class="fi" id="ev-titre" placeholder="Ex: Repas du Nord"/></div>
+      <div class="form-grid">
+        <div><label class="fl">Date *</label><input class="fi" id="ev-date" type="date"/></div>
+        <div><label class="fl">Heure</label><input class="fi" id="ev-heure" type="time" value="18:00"/></div>
+      </div>
+      <div><label class="fl">Lieu</label><input class="fi" id="ev-lieu" placeholder="Salle des fêtes, Le Mans"/></div>
+      <div><label class="fl">Description</label><textarea class="fi" id="ev-desc" style="min-height:70px;resize:vertical" placeholder="Description de l'événement..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-event')">Annuler</button>
+      <button class="btn btn-primary" onclick="addEvent()">📅 Ajouter l'événement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DRAWER MEMBRE ══ -->
+<div class="drawer-overlay" id="drawer-membre" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="dr-top">
+      <button class="dr-close" onclick="closeDrawer()">✕</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+        <div class="mav-lg" id="dr-av" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">JD</div>
+        <div>
+          <div style="font-size:20px;font-weight:800" id="dr-name">Jean Dupont</div>
+          <div style="font-size:13px;opacity:.75;margin-top:3px" id="dr-role">Membre</div>
+        </div>
+      </div>
+    </div>
+    <div class="dr-body">
+      <div style="margin-bottom:18px">
+        <div class="dr-section">Coordonnées</div>
+        <div class="dr-row"><div class="dr-ico">✉️</div><div><div class="dr-label">Email</div><div class="dr-val" id="dr-email">—</div></div></div>
+        <div class="dr-row"><div class="dr-ico">📞</div><div><div class="dr-label">Téléphone</div><div class="dr-val" id="dr-tel">—</div></div></div>
+        <div class="dr-row"><div class="dr-ico">📍</div><div><div class="dr-label">Ville</div><div class="dr-val" id="dr-ville">—</div></div></div>
+      </div>
+      <div style="margin-bottom:18px">
+        <div class="dr-section">Adhésion</div>
+        <div class="dr-row"><div class="dr-ico">📅</div><div><div class="dr-label">Membre depuis</div><div class="dr-val" id="dr-joined">—</div></div></div>
+        <div class="dr-row"><div class="dr-ico">💳</div><div><div class="dr-label">Cotisation 2024</div><div class="dr-val" id="dr-cotisation">—</div></div></div>
+        <div class="dr-row"><div class="dr-ico">✅</div><div><div class="dr-label">Statut</div><div class="dr-val" id="dr-statut">—</div></div></div>
+      </div>
+      <div>
+        <div class="dr-section">Actions rapides</div>
+        <div class="dr-actions">
+          <button class="btn btn-primary" style="justify-content:center" id="dr-email-btn">✉️ Envoyer un email</button>
+          <button class="btn btn-outline" style="justify-content:center" id="dr-edit-btn">✏️ Modifier le profil</button>
+          <button class="btn btn-success" style="justify-content:center" id="dr-pay-btn">💳 Marquer cotisation payée</button>
+          <button class="btn btn-outline" style="justify-content:center" id="dr-invoice-btn">🧾 Générer une facture</button>
+          <button class="btn btn-danger" style="justify-content:center" id="dr-delete-btn">🗑 Supprimer le membre</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIF -->
+<div id="notif"></div>
+
+<script>
+// ══ DATA ══
+var MEMBERS=[
+  {id:1,nom:"Dupont",prenom:"Jean-Pierre",email:"jp.dupont@gmail.com",tel:"+33 6 12 34 56 78",ville:"Le Mans",statut:"actif",cotisation:"en attente",joined:"2018",role:"Membre",av:"JD",grad:"linear-gradient(135deg,#4FD1C5,#2C7A7B)"},
+  {id:2,nom:"Lecomte",prenom:"Marie-Claire",email:"mc.lecomte@orange.fr",tel:"+33 6 23 45 67 89",ville:"Le Mans",statut:"actif",cotisation:"payée",joined:"2015",role:"Vice-Présidente",av:"ML",grad:"linear-gradient(135deg,#63B3ED,#2B6CB0)"},
+  {id:3,nom:"Delacroix",prenom:"Bernard",email:"b.delacroix@laposte.net",tel:"+33 6 34 56 78 90",ville:"Allonnes",statut:"actif",cotisation:"en attente",joined:"2020",role:"Membre",av:"BD",grad:"linear-gradient(135deg,#F6AD55,#C05621)"},
+  {id:4,nom:"Fontaine",prenom:"Isabelle",email:"i.fontaine@wanadoo.fr",tel:"+33 6 45 67 89 01",ville:"La Flèche",statut:"actif",cotisation:"payée",joined:"2019",role:"Trésorière",av:"IF",grad:"linear-gradient(135deg,#68D391,#276749)"},
+  {id:5,nom:"Mercier",prenom:"Robert",email:"r.mercier@sfr.fr",tel:"+33 6 56 78 90 12",ville:"Sablé-sur-Sarthe",statut:"inactif",cotisation:"impayée",joined:"2016",role:"Membre",av:"RM",grad:"linear-gradient(135deg,#FC8181,#C53030)"},
+  {id:6,nom:"Leclercq",prenom:"Sylvie",email:"s.leclercq@gmail.com",tel:"+33 6 67 89 01 23",ville:"Le Mans",statut:"actif",cotisation:"payée",joined:"2021",role:"Secrétaire",av:"SL",grad:"linear-gradient(135deg,#B794F4,#553C9A)"},
+  {id:7,nom:"Beaumont",prenom:"Henri",email:"h.beaumont@free.fr",tel:"+33 6 78 90 12 34",ville:"Mamers",statut:"actif",cotisation:"payée",joined:"2013",role:"Président",av:"HB",grad:"linear-gradient(135deg,#6366f1,#8b5cf6)"},
+  {id:8,nom:"Poulain",prenom:"Nathalie",email:"n.poulain@hotmail.fr",tel:"+33 6 89 01 23 45",ville:"Le Mans",statut:"actif",cotisation:"en attente",joined:"2022",role:"Membre",av:"NP",grad:"linear-gradient(135deg,#F6AD55,#C05621)"},
+  {id:9,nom:"Vasseur",prenom:"Didier",email:"d.vasseur@gmail.com",tel:"+33 6 90 12 34 56",ville:"La Ferté-Bernard",statut:"actif",cotisation:"payée",joined:"2017",role:"Membre",av:"DV",grad:"linear-gradient(135deg,#4FD1C5,#2C7A7B)"},
+  {id:10,nom:"Garnier",prenom:"Christine",email:"c.garnier@orange.fr",tel:"+33 6 01 23 45 67",ville:"Le Mans",statut:"inactif",cotisation:"impayée",joined:"2014",role:"Membre",av:"CG",grad:"linear-gradient(135deg,#FC8181,#C53030)"},
+  {id:11,nom:"Moreau",prenom:"Thierry",email:"t.moreau@laposte.net",tel:"+33 6 11 22 33 44",ville:"Coulaines",statut:"actif",cotisation:"payée",joined:"2023",role:"Membre",av:"TM",grad:"linear-gradient(135deg,#68D391,#276749)"},
+  {id:12,nom:"Laurent",prenom:"Brigitte",email:"b.laurent@sfr.fr",tel:"+33 6 22 33 44 55",ville:"Le Mans",statut:"actif",cotisation:"payée",joined:"2020",role:"Membre",av:"BL",grad:"linear-gradient(135deg,#63B3ED,#2B6CB0)"}
+];
+
+var INVOICES=[
+  {id:"F-2024-001",memberId:1,nom:"Dupont Jean-Pierre",date:"15/01/2024",montant:25,statut:"en attente",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-002",memberId:2,nom:"Lecomte Marie-Claire",date:"18/01/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-003",memberId:3,nom:"Delacroix Bernard",date:"01/02/2024",montant:25,statut:"en attente",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-004",memberId:4,nom:"Fontaine Isabelle",date:"20/01/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-005",memberId:5,nom:"Mercier Robert",date:"22/01/2024",montant:25,statut:"impayée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-006",memberId:6,nom:"Leclercq Sylvie",date:"25/01/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-007",memberId:7,nom:"Beaumont Henri",date:"10/01/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-008",memberId:8,nom:"Poulain Nathalie",date:"05/02/2024",montant:25,statut:"en attente",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-009",memberId:9,nom:"Vasseur Didier",date:"28/01/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-010",memberId:10,nom:"Garnier Christine",date:"30/01/2024",montant:25,statut:"impayée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-011",memberId:11,nom:"Moreau Thierry",date:"10/02/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"},
+  {id:"F-2024-012",memberId:12,nom:"Laurent Brigitte",date:"12/02/2024",montant:25,statut:"payée",type:"Cotisation annuelle 2024"}
+];
+
+var EMAIL_HISTORY=[];
+var nextMemberId=13;
+var nextInvoiceNum=13;
+var currentFilter='tous';
+var deleteTargetId=null;
+var currentMemberSearch='';
+
+// ══ LOGIN ══
+function doLogin(){
+  var e=document.getElementById('l-email').value.trim();
+  var p=document.getElementById('l-pass').value;
+  if(e==='admin@chtis-en-maine.fr'&&p==='Admin2024!'){
+    document.getElementById('login-view').style.display='none';
+    document.getElementById('dash-view').style.display='flex';
+    initDashboard();
+  } else {
+    document.getElementById('lerr').style.display='block';
+  }
+}
+
+function logout(){
+  document.getElementById('dash-view').style.display='none';
+  document.getElementById('login-view').style.display='flex';
+  document.getElementById('l-email').value='';
+  document.getElementById('l-pass').value='';
+}
+
+// ══ NAVIGATION ══
+var pageTitles={dashboard:'Tableau de bord',membres:'Gestion des membres',factures:'Cotisations & Factures',
+  documents:'Documents',generateur:'Générateur de facture PDF',emails:'Emails & Actualités',
+  historique:'Historique des emails',evenements:'Événements'};
+
+function goPage(id,el){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('active')});
+  var page=document.getElementById('page-'+id);
+  if(page) page.classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[id]||id;
+  if(id==='membres') renderMembers(currentFilter);
+  if(id==='factures') renderInvoices('toutes');
+  if(id==='generateur') initGenerator();
+  if(id==='emails') updateEmailPreview();
+}
+
+// ══ INIT ══
+function initDashboard(){
+  updateStats();
+  renderDashMembers();
+  renderUnpaid();
+  renderChart();
+  renderActivity();
+  renderMembers('tous');
+  renderInvoices('toutes');
+  initGenerator();
+  updateEmailPreview();
+  updateHistory();
+  populateMemberSelect();
+}
+
+function updateStats(){
+  var actifs=MEMBERS.filter(function(m){return m.statut==='actif'}).length;
+  var paid=INVOICES.filter(function(i){return i.statut==='payée'}).reduce(function(a,i){return a+i.montant},0);
+  var pending=INVOICES.filter(function(i){return i.statut==='en attente'}).reduce(function(a,i){return a+i.montant},0);
+  var unpaid=INVOICES.filter(function(i){return i.statut==='impayée'}).reduce(function(a,i){return a+i.montant},0);
+  document.getElementById('stat-membres').textContent=actifs;
+  document.getElementById('stat-payes').textContent=paid+' €';
+  document.getElementById('stat-attente').textContent=pending+' €';
+  document.getElementById('stat-impayes').textContent=unpaid+' €';
+  document.getElementById('total-encaisse').textContent=paid+' €';
+  var nbUnpaid=INVOICES.filter(function(i){return i.statut!=='payée'}).length;
+  document.getElementById('badge-factures').textContent=nbUnpaid;
+  document.getElementById('count-tous').textContent=MEMBERS.length;
+  document.getElementById('count-actifs').textContent=MEMBERS.filter(function(m){return m.statut==='actif'}).length;
+  document.getElementById('count-inactifs').textContent=MEMBERS.filter(function(m){return m.statut==='inactif'}).length;
+  document.getElementById('count-impayes').textContent=MEMBERS.filter(function(m){return m.cotisation==='impayée'}).length;
+}
+
+function renderChart(){
+  var months=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  var vals=[2,3,4,2,1,3,2,4,3,2,3,3];
+  var max=Math.max.apply(null,vals);
+  var html='';
+  months.forEach(function(m,i){
+    var h=Math.round((vals[i]/max)*100);
+    var color=i===new Date().getMonth()?'linear-gradient(135deg,#6366f1,#8b5cf6)':'linear-gradient(135deg,#c7d2fe,#a5b4fc)';
+    html+='<div class="bar-col"><div class="bar-val">'+vals[i]+'</div><div class="bar" style="height:'+h+'%;background:'+color+'" title="'+m+': '+vals[i]+' cotisations"></div><div class="bar-label">'+m+'</div></div>';
+  });
+  document.getElementById('chart-bars').innerHTML=html;
+}
+
+function renderActivity(){
+  var items=[
+    {color:'#6366f1',text:'Cotisation payée — Moreau Thierry',time:'Il y a 2 heures'},
+    {color:'#059669',text:'Nouveau membre — Laurent Brigitte',time:'Hier, 14h30'},
+    {color:'#d97706',text:'Relance envoyée — Mercier Robert',time:'Hier, 10h15'},
+    {color:'#2563eb',text:'Document uploadé — AG 2024.pdf',time:'Il y a 3 jours'},
+    {color:'#dc2626',text:'Impayée signalée — Garnier Christine',time:'Il y a 5 jours'}
+  ];
+  var html='';
+  items.forEach(function(a){
+    html+='<div class="act-item"><div class="act-dot" style="background:'+a.color+'"></div><div><div class="act-text">'+a.text+'</div><div class="act-time">'+a.time+'</div></div></div>';
+  });
+  document.getElementById('activity-list').innerHTML=html;
+}
+
+function renderDashMembers(){
+  var recent=MEMBERS.slice(-4).reverse();
+  var html='';
+  recent.forEach(function(m){
+    var cs=cotBadge(m.cotisation);
+    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="mav" style="background:'+m.grad+'">'+m.av+'</div><div style="font-weight:700;font-size:13px">'+m.prenom+' '+m.nom+'</div></div></td><td>'+cs+'</td><td>'+statBadge(m.statut)+'</td></tr>';
+  });
+  document.getElementById('dash-members-tbody').innerHTML=html;
+}
+
+function renderUnpaid(){
+  var list=MEMBERS.filter(function(m){return m.cotisation==='impayée'||m.cotisation==='en attente'});
+  var html='';
+  list.forEach(function(m){
+    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="mav" style="background:'+m.grad+'">'+m.av+'</div><strong>'+m.prenom+' '+m.nom+'</strong></div></td><td>25 €</td><td><button class="btn btn-warning btn-sm" onclick="showNotif(\'Relance envoyée à '+m.prenom+' '+m.nom+'\',\'success\')">📧 Relancer</button></td></tr>';
+  });
+  document.getElementById('unpaid-tbody').innerHTML=html;
+}
+
+// ══ MEMBERS ══
+function statusDot(s){return s==='payée'?'#059669':s==='en attente'?'#d97706':'#dc2626'}
+function cotBadge(c){
+  if(c==='payée') return '<span class="badge b-green"><span class="dot" style="background:#059669"></span>Payée</span>';
+  if(c==='en attente') return '<span class="badge b-yellow"><span class="dot" style="background:#d97706"></span>En attente</span>';
+  return '<span class="badge b-red"><span class="dot" style="background:#dc2626"></span>Impayée</span>';
+}
+function statBadge(s){
+  return s==='actif'?'<span class="badge b-green">Actif</span>':'<span class="badge b-gray">Inactif</span>';
+}
+
+function renderMembers(filtre){
+  currentFilter=filtre;
+  var list=MEMBERS.filter(function(m){
+    var fm=filtre==='tous'||(filtre==='actif'&&m.statut==='actif')||(filtre==='inactif'&&m.statut==='inactif')||(filtre==='impaye'&&m.cotisation==='impayée');
+    var sm=!currentMemberSearch||((m.prenom+' '+m.nom+' '+m.email+' '+m.ville).toLowerCase().includes(currentMemberSearch.toLowerCase()));
+    return fm&&sm;
+  });
+  document.getElementById('membres-count-title').textContent=list.length+' membre'+(list.length>1?'s':'');
+  var html='';
+  list.forEach(function(m){
+    html+='<tr onclick="openDrawer('+m.id+')" style="cursor:pointer">';
+    html+='<td><div style="display:flex;align-items:center;gap:10px"><div class="mav" style="background:'+m.grad+'">'+m.av+'</div><div><div style="font-weight:700;font-size:13.5px">'+m.prenom+' '+m.nom+'</div><div style="font-size:11.5px;color:var(--t4)">Membre depuis '+m.joined+'</div></div></div></td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+m.email+'</td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+m.tel+'</td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+m.ville+'</td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+m.role+'</td>';
+    html+='<td>'+statBadge(m.statut)+'</td>';
+    html+='<td>'+cotBadge(m.cotisation)+'</td>';
+    html+='<td onclick="event.stopPropagation()"><div style="display:flex;gap:5px"><button class="btn btn-outline btn-sm" onclick="editMember('+m.id+')">✏️</button><button class="btn btn-danger btn-sm" onclick="askDelete('+m.id+')">🗑</button></div></td>';
+    html+='</tr>';
+  });
+  document.getElementById('membres-tbody').innerHTML=html;
+}
+
+function filterMembers(f,el){
+  document.querySelectorAll('#page-membres .tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  renderMembers(f);
+}
+
+function filterMembersSearch(v){
+  currentMemberSearch=v;
+  renderMembers(currentFilter);
+}
+
+function globalSearch(v){
+  if(!v) return;
+  goPage('membres',document.querySelectorAll('.ni')[1]);
+  currentMemberSearch=v;
+  document.getElementById('member-search').value=v;
+  renderMembers(currentFilter);
+}
+
+// ══ CRUD MEMBERS ══
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+function editMember(id){
+  var m=MEMBERS.find(function(x){return x.id===id});
+  if(!m) return;
+  document.getElementById('modal-member-title').textContent='✏️ Modifier le membre';
+  document.getElementById('edit-member-id').value=id;
+  document.getElementById('m-prenom').value=m.prenom;
+  document.getElementById('m-nom').value=m.nom;
+  document.getElementById('m-email').value=m.email;
+  document.getElementById('m-tel').value=m.tel;
+  document.getElementById('m-ville').value=m.ville;
+  document.getElementById('m-role').value=m.role;
+  document.getElementById('m-cotisation').value=m.cotisation;
+  document.getElementById('m-statut').value=m.statut;
+  openModal('modal-add-member');
+}
+
+function saveMember(){
+  var prenom=document.getElementById('m-prenom').value.trim();
+  var nom=document.getElementById('m-nom').value.trim();
+  var email=document.getElementById('m-email').value.trim();
+  var ok=true;
+  if(!prenom){document.getElementById('e-prenom').textContent='Requis';ok=false;}else{document.getElementById('e-prenom').textContent='';}
+  if(!nom){document.getElementById('e-nom').textContent='Requis';ok=false;}else{document.getElementById('e-nom').textContent='';}
+  if(!email||!email.includes('@')){document.getElementById('e-email').textContent='Email invalide';ok=false;}else{document.getElementById('e-email').textContent='';}
+  if(!ok) return;
+  var editId=document.getElementById('edit-member-id').value;
+  var av=(prenom[0]+(nom[0]||'')).toUpperCase();
+  var grads=['linear-gradient(135deg,#4FD1C5,#2C7A7B)','linear-gradient(135deg,#63B3ED,#2B6CB0)','linear-gradient(135deg,#F6AD55,#C05621)','linear-gradient(135deg,#68D391,#276749)','linear-gradient(135deg,#B794F4,#553C9A)','linear-gradient(135deg,#6366f1,#8b5cf6)'];
+  var data={
+    prenom:prenom,nom:nom,email:email,
+    tel:document.getElementById('m-tel').value,
+    ville:document.getElementById('m-ville').value,
+    role:document.getElementById('m-role').value,
+    cotisation:document.getElementById('m-cotisation').value,
+    statut:document.getElementById('m-statut').value,
+    av:av
+  };
+  if(editId){
+    var idx=MEMBERS.findIndex(function(x){return x.id===parseInt(editId)});
+    if(idx>=0){Object.assign(MEMBERS[idx],data);showNotif('Membre modifié avec succès ✓','success');}
+  } else {
+    data.id=nextMemberId++;data.joined=new Date().getFullYear().toString();
+    data.grad=grads[data.id%grads.length];
+    MEMBERS.push(data);
+    // Add invoice
+    var invId='F-2024-0'+String(nextInvoiceNum++).padStart(2,'0');
+    INVOICES.push({id:invId,memberId:data.id,nom:prenom+' '+nom,date:new Date().toLocaleDateString('fr-FR'),montant:25,statut:data.cotisation,type:'Cotisation annuelle 2024'});
+    showNotif('Membre ajouté avec succès ✓','success');
+  }
+  closeModal('modal-add-member');
+  document.getElementById('modal-member-title').textContent='👤 Ajouter un membre';
+  document.getElementById('edit-member-id').value='';
+  document.getElementById('m-prenom').value='';document.getElementById('m-nom').value='';
+  document.getElementById('m-email').value='';document.getElementById('m-tel').value='';
+  document.getElementById('m-ville').value='';
+  renderMembers(currentFilter);
+  updateStats();
+  renderDashMembers();
+  renderUnpaid();
+  populateMemberSelect();
+}
+
+function askDelete(id){
+  var m=MEMBERS.find(function(x){return x.id===id});
+  if(!m) return;
+  deleteTargetId=id;
+  document.getElementById('delete-member-name').textContent=m.prenom+' '+m.nom;
+  openModal('modal-delete-member');
+}
+
+function confirmDelete(){
+  MEMBERS=MEMBERS.filter(function(m){return m.id!==deleteTargetId});
+  INVOICES=INVOICES.filter(function(i){return i.memberId!==deleteTargetId});
+  closeModal('modal-delete-member');
+  closeDrawer();
+  renderMembers(currentFilter);
+  updateStats();renderDashMembers();renderUnpaid();populateMemberSelect();
+  showNotif('Membre supprimé','error');
+  deleteTargetId=null;
+}
+
+// ══ DRAWER ══
+function openDrawer(id){
+  var m=MEMBERS.find(function(x){return x.id===id});
+  if(!m) return;
+  document.getElementById('dr-av').textContent=m.av;
+  document.getElementById('dr-av').style.background=m.grad;
+  document.getElementById('dr-name').textContent=m.prenom+' '+m.nom;
+  document.getElementById('dr-role').textContent=m.role+' · Membre depuis '+m.joined;
+  document.getElementById('dr-email').textContent=m.email;
+  document.getElementById('dr-tel').textContent=m.tel;
+  document.getElementById('dr-ville').textContent=m.ville;
+  document.getElementById('dr-joined').textContent=m.joined;
+  document.getElementById('dr-cotisation').innerHTML=cotBadge(m.cotisation);
+  document.getElementById('dr-statut').innerHTML=statBadge(m.statut);
+  document.getElementById('dr-email-btn').onclick=function(){showNotif('Email envoyé à '+m.email,'success')};
+  document.getElementById('dr-edit-btn').onclick=function(){closeDrawer();editMember(m.id)};
+  document.getElementById('dr-pay-btn').onclick=function(){
+    m.cotisation='payée';
+    var inv=INVOICES.find(function(i){return i.memberId===m.id});
+    if(inv) inv.statut='payée';
+    openDrawer(m.id);updateStats();renderDashMembers();renderUnpaid();
+    showNotif('Cotisation marquée payée ✓','success');
+  };
+  document.getElementById('dr-invoice-btn').onclick=function(){closeDrawer();goPage('generateur',document.querySelectorAll('.ni')[4]);document.getElementById('gen-membre').value=m.id;pickGenMember(document.getElementById('gen-membre'))};
+  document.getElementById('dr-delete-btn').onclick=function(){closeDrawer();askDelete(m.id)};
+  if(m.cotisation==='payée') document.getElementById('dr-pay-btn').style.display='none';
+  else document.getElementById('dr-pay-btn').style.display='flex';
+  document.getElementById('drawer-membre').classList.add('open');
+}
+
+function closeDrawer(){document.getElementById('drawer-membre').classList.remove('open')}
+
+// ══ INVOICES ══
+function renderInvoices(f){
+  var list=f==='toutes'?INVOICES:INVOICES.filter(function(i){return i.statut===f});
+  var html='';
+  list.forEach(function(inv){
+    var action=inv.statut==='impayée'?'<button class="btn btn-warning btn-sm" onclick="showNotif(\'Relance envoyée\',\'success\')">📧 Relancer</button>':'<button class="btn btn-outline btn-sm" onclick="genPDFForInvoice(\''+inv.id+'\')">📄 PDF</button>';
+    html+='<tr><td style="font-family:monospace;font-size:11.5px;font-weight:700;color:#6366f1">'+inv.id+'</td>';
+    html+='<td style="font-weight:700">'+inv.nom+'</td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+inv.date+'</td>';
+    html+='<td style="color:var(--t3);font-size:13px">'+inv.type+'</td>';
+    html+='<td style="font-weight:800">'+inv.montant+' €</td>';
+    html+='<td>'+cotBadge(inv.statut)+'</td>';
+    html+='<td>'+action+'</td></tr>';
+  });
+  document.getElementById('factures-tbody').innerHTML=html;
+}
+
+function filterInvoices(f,el){
+  document.querySelectorAll('#page-factures .tab').forEach(function(t){t.classList.remove('active')});
+  el.classList.add('active');
+  renderInvoices(f);
+}
+
+// ══ GENERATOR ══
+function populateMemberSelect(){
+  var sel=document.getElementById('gen-membre');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Sélectionner un membre —</option>';
+  MEMBERS.forEach(function(m){
+    sel.innerHTML+='<option value="'+m.id+'">'+m.prenom+' '+m.nom+'</option>';
+  });
+}
+
+function initGenerator(){
+  populateMemberSelect();
+  document.getElementById('gen-date').value=new Date().toISOString().split('T')[0];
+  updateTotal();updatePreview();
+}
+
+function pickGenMember(sel){
+  var m=MEMBERS.find(function(x){return x.id===parseInt(sel.value)});
+  if(!m) return;
+  document.getElementById('gen-prenom').value=m.prenom;
+  document.getElementById('gen-nom').value=m.nom;
+  document.getElementById('gen-email').value=m.email;
+  updatePreview();
+}
+
+function updateTotal(){
+  var mt=parseFloat(document.getElementById('gen-montant').value)||0;
+  var tva=parseFloat(document.getElementById('gen-tva').value)||0;
+  var tvaAmt=mt*tva/100;
+  var ttc=mt+tvaAmt;
+  document.getElementById('t-ht').textContent=mt.toFixed(2)+' €';
+  document.getElementById('t-tva').textContent=tvaAmt.toFixed(2)+' €';
+  document.getElementById('t-ttc').textContent=ttc.toFixed(2)+' €';
+  updatePreview();
+}
+
+function updatePreview(){
+  var prenom=document.getElementById('gen-prenom').value||'—';
+  var nom=document.getElementById('gen-nom').value||'—';
+  var email=document.getElementById('gen-email').value||'—';
+  var num=document.getElementById('gen-num').value||'—';
+  var date=document.getElementById('gen-date').value;
+  var objet=document.getElementById('gen-objet').value||'—';
+  var mt=parseFloat(document.getElementById('gen-montant').value)||0;
+  var tva=parseFloat(document.getElementById('gen-tva').value)||0;
+  var ttc=(mt+mt*tva/100).toFixed(2);
+  document.getElementById('prev-num').textContent='N° '+num;
+  document.getElementById('prev-date').textContent='Date : '+(date?new Date(date).toLocaleDateString('fr-FR'):'-');
+  document.getElementById('prev-name').textContent=prenom+' '+nom;
+  document.getElementById('prev-email').textContent=email;
+  document.getElementById('prev-objet').textContent=objet;
+  document.getElementById('prev-ht').textContent=mt.toFixed(2)+' €';
+  document.getElementById('prev-ttc').textContent=ttc+' €';
+}
+
+function generatePDF(){
+  updatePreview();
+  var prenom=document.getElementById('gen-prenom').value||'Membre';
+  var nom=document.getElementById('gen-nom').value||'';
+  var email=document.getElementById('gen-email').value||'';
+  var num=document.getElementById('gen-num').value||'F-2024-XXX';
+  var date=document.getElementById('gen-date').value;
+  var objet=document.getElementById('gen-objet').value||'Cotisation';
+  var mt=parseFloat(document.getElementById('gen-montant').value)||0;
+  var tva=parseFloat(document.getElementById('gen-tva').value)||0;
+  var ttc=mt+mt*tva/100;
+  var dateStr=date?new Date(date).toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
+
+  try{
+    var doc=new window.jspdf.jsPDF();
+    // Header
+    doc.setFillColor(99,102,241);doc.rect(0,0,210,40,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(22);doc.setFont('helvetica','bold');
+    doc.text("Ch'tis en Maine",14,18);
+    doc.setFontSize(10);doc.setFont('helvetica','normal');
+    doc.text('Association loi 1901',14,26);
+    doc.text('contact@chtis-en-maine.fr',14,32);
+    // Invoice title
+    doc.setTextColor(99,102,241);doc.setFontSize(28);doc.setFont('helvetica','bold');
+    doc.text('FACTURE',196,20,{align:'right'});
+    doc.setFontSize(11);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+    doc.text('N° '+num,196,28,{align:'right'});
+    doc.text('Date : '+dateStr,196,34,{align:'right'});
+    // Divider
+    doc.setDrawColor(99,102,241);doc.setLineWidth(0.8);doc.line(14,46,196,46);
+    // Billed to
+    doc.setTextColor(150,150,150);doc.setFontSize(9);doc.setFont('helvetica','bold');
+    doc.text('FACTURÉ À',14,58);doc.text('ÉMIS PAR',110,58);
+    doc.setTextColor(30,30,30);doc.setFontSize(12);doc.setFont('helvetica','bold');
+    doc.text(prenom+' '+nom,14,66);doc.text("Ch'tis en Maine",110,66);
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);
+    doc.text(email,14,73);doc.text('contact@chtis-en-maine.fr',110,73);
+    doc.text('Sarthe, Pays de la Loire',110,79);
+    // Table header
+    doc.setFillColor(248,250,252);doc.rect(14,90,182,10,'F');
+    doc.setTextColor(150,150,150);doc.setFontSize(9);doc.setFont('helvetica','bold');
+    doc.text('DESCRIPTION',16,97);doc.text('QTÉ',140,97);doc.text('TOTAL',185,97,{align:'right'});
+    // Table row
+    doc.setDrawColor(220,220,220);doc.setLineWidth(0.3);doc.line(14,100,196,100);
+    doc.setTextColor(30,30,30);doc.setFontSize(11);doc.setFont('helvetica','normal');
+    doc.text(objet,16,109);doc.text('1',140,109);
+    doc.setFont('helvetica','bold');doc.text(mt.toFixed(2)+' EUR',185,109,{align:'right'});
+    doc.line(14,113,196,113);
+    // TVA row if applicable
+    var yOff=0;
+    if(tva>0){
+      doc.setFont('helvetica','normal');doc.setTextColor(100,100,100);doc.setFontSize(10);
+      doc.text('TVA ('+tva+'%)',16,121);doc.text((mt*tva/100).toFixed(2)+' EUR',185,121,{align:'right'});
+      doc.line(14,124,196,124);yOff=8;
+    }
+    // Total box
+    doc.setFillColor(99,102,241);doc.roundedRect(120,118+yOff,76,22,3,3,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text('MONTANT TOTAL TTC',158,125+yOff,{align:'center'});
+    doc.setFontSize(16);doc.setFont('helvetica','bold');
+    doc.text(ttc.toFixed(2)+' EUR',158,134+yOff,{align:'center'});
+    // Footer
+    doc.setFillColor(248,250,252);doc.rect(14,260,182,22,'F');
+    doc.setTextColor(120,120,120);doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.text("Merci de votre confiance — Ch'tis en Maine · Association loi 1901",105,269,{align:'center'});
+    doc.text('contact@chtis-en-maine.fr · Sarthe, Pays de la Loire',105,276,{align:'center'});
+    doc.save('Facture-'+num+'.pdf');
+    showNotif('PDF téléchargé : Facture-'+num+'.pdf','success');
+  } catch(e){
+    showNotif('Erreur PDF : '+e.message,'error');
+  }
+}
+
+function genPDFForInvoice(invId){
+  var inv=INVOICES.find(function(i){return i.id===invId});
+  if(!inv) return;
+  var m=MEMBERS.find(function(x){return x.id===inv.memberId});
+  if(m){
+    document.getElementById('gen-prenom').value=m.prenom;
+    document.getElementById('gen-nom').value=m.nom;
+    document.getElementById('gen-email').value=m.email;
+  }
+  document.getElementById('gen-num').value=inv.id;
+  document.getElementById('gen-montant').value=inv.montant;
+  document.getElementById('gen-objet').value=inv.type;
+  updateTotal();generatePDF();
+}
+
+// ══ EMAILS ══
+var templates={
+  relance:{s:"Relance cotisation 2024 — Ch'tis en Maine",b:"Bonjour,\n\nNous vous rappelons que votre cotisation 2024 de 25€ est toujours en attente.\n\nMerci de procéder au règlement dès que possible.\n\nCordialement,\nL'administration — Ch'tis en Maine"},
+  info:{s:"Information importante — Ch'tis en Maine",b:"Bonjour à tous,\n\nNous souhaitons vous informer d'une prochaine réunion de l'association.\n\nCordialement,\nL'administration — Ch'tis en Maine"},
+  evenement:{s:"Invitation — Événement Ch'tis en Maine",b:"Bonjour,\n\nNous avons le plaisir de vous inviter à notre prochain événement.\n\nMerci de confirmer votre présence.\n\nCordialement,\nL'administration — Ch'tis en Maine"},
+  bienvenue:{s:"Bienvenue dans l'association Ch'tis en Maine !",b:"Bonjour,\n\nNous sommes ravis de vous accueillir dans notre association.\n\nVotre cotisation de 25€ est à régler à votre convenance.\n\nCordialement,\nL'administration — Ch'tis en Maine"},
+  custom:{s:'',b:''}
+};
+
+function applyTemplate(v){
+  var t=templates[v];
+  document.getElementById('email-subject').value=t.s;
+  document.getElementById('email-body').value=t.b;
+  updateEmailPreview();
+}
+
+function updateEmailPreview(){
+  var subj=document.getElementById('email-subject');
+  var body=document.getElementById('email-body');
+  if(!subj||!body) return;
+  document.getElementById('email-prev-subject').textContent=subj.value||'—';
+  var lines=body.value.split('\n').map(function(l){return l?'<p style="margin-bottom:6px">'+l+'</p>':'<br/>'}).join('');
+  document.getElementById('email-prev-body').innerHTML=lines||'<span style="color:var(--t4)">Aperçu du message...</span>';
+}
+
+document.addEventListener('input',function(e){
+  if(e.target.id==='email-subject'||e.target.id==='email-body') updateEmailPreview();
+});
+
+function sendEmail(){
+  var subj=document.getElementById('email-subject').value;
+  var body=document.getElementById('email-body').value;
+  var dest=document.getElementById('email-dest').value;
+  if(!subj||!body){showNotif('Veuillez remplir l\'objet et le message','error');return;}
+  var destLabel=document.getElementById('email-dest').options[document.getElementById('email-dest').selectedIndex].text;
+  var now=new Date();
+  var entry={
+    id:EMAIL_HISTORY.length+1,
+    subject:subj,
+    dest:destLabel,
+    date:now.toLocaleDateString('fr-FR')+' à '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+    preview:body.substring(0,80)+'...'
+  };
+  EMAIL_HISTORY.unshift(entry);
+  updateHistory();
+  showNotif('Email envoyé à '+destLabel+' ✓','success');
+}
+
+function updateHistory(){
+  var list=document.getElementById('email-history-list');
+  var count=document.getElementById('history-count');
+  count.textContent=EMAIL_HISTORY.length+' email'+(EMAIL_HISTORY.length>1?'s':'')+' envoyé'+(EMAIL_HISTORY.length>1?'s':'');
+  if(EMAIL_HISTORY.length===0){
+    list.innerHTML='<div style="padding:40px;text-align:center;color:var(--t4)"><div style="font-size:32px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:600">Aucun email envoyé pour l\'instant</div><div style="font-size:13px;margin-top:4px">Les emails envoyés apparaîtront ici</div></div>';
+    return;
+  }
+  var html='';
+  EMAIL_HISTORY.forEach(function(e){
+    html+='<div class="email-item">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">';
+    html+='<div class="email-subject">'+e.subject+'</div>';
+    html+='<span class="badge b-green" style="flex-shrink:0">Envoyé</span>';
+    html+='</div>';
+    html+='<div class="email-meta">📤 '+e.dest+' · 🕐 '+e.date+'</div>';
+    html+='<div style="font-size:12px;color:var(--t3);margin-top:4px;font-style:italic">'+e.preview+'</div>';
+    html+='</div>';
+  });
+  list.innerHTML=html;
+}
+
+// ══ EVENTS ══
+function addEvent(){
+  var titre=document.getElementById('ev-titre').value.trim();
+  var date=document.getElementById('ev-date').value;
+  var lieu=document.getElementById('ev-lieu').value;
+  if(!titre||!date){showNotif('Titre et date requis','error');return;}
+  var d=new Date(date);
+  var months=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  var html='<div class="event-item"><div class="event-date-box"><div class="event-day">'+d.getDate()+'</div><div class="event-month">'+months[d.getMonth()]+'</div></div><div style="flex:1"><div class="event-title">'+titre+'</div><div class="event-info">📍 '+(lieu||'À définir')+'</div></div><div style="display:flex;gap:6px"><button class="btn btn-danger btn-sm" onclick="this.closest(\'.event-item\').remove();showNotif(\'Événement supprimé\',\'error\')">🗑</button></div></div>';
+  document.getElementById('events-list').insertAdjacentHTML('afterbegin',html);
+  closeModal('modal-add-event');
+  document.getElementById('ev-titre').value='';document.getElementById('ev-date').value='';
+  document.getElementById('ev-lieu').value='';document.getElementById('ev-desc').value='';
+  showNotif('Événement ajouté ✓','success');
+}
+
+// ══ NOTIF ══
+function showNotif(msg,type){
+  var n=document.getElementById('notif');
+  n.textContent=msg;n.className=type||'';
+  n.classList.add('show');
+  setTimeout(function(){n.classList.remove('show')},3000);
+}
+
+// ══ INIT DATE ══
+var today=new Date().toISOString().split('T')[0];
+document.addEventListener('DOMContentLoaded',function(){
+  var d=document.getElementById('gen-date');
+  if(d) d.value=today;
+  var evd=document.getElementById('ev-date');
+  if(evd) evd.value=today;
+});
+</script>
+</body>
+</html>
