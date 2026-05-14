@@ -1241,6 +1241,11 @@ function App() {
       titre=`Bienvenue ${prenom} ${nom} ! 🎉`;
       message=`Nous sommes ravis de vous accueillir parmi nous.\n\nÀ très bientôt !`;
       header_color="linear-gradient(135deg,#667eea,#764ba2)";
+    } else if(type==="modification"){
+      subject=`Vos informations ont été mises à jour — Ch'tis en Maine`;
+      titre=`Mise à jour de votre profil ✏️`;
+      message=`Bonjour ${prenom} ${nom},\n\nVos informations ont bien été mises à jour dans notre association.\n\nSi vous n'êtes pas à l'origine de cette modification, contactez-nous immédiatement.`;
+      header_color="linear-gradient(135deg,#2563eb,#3b82f6)";
     } else if(type==="en attente"){
       subject=`Votre cotisation — Ch'tis en Maine`;
       titre=`Bonjour ${prenom} 👋`;
@@ -1306,12 +1311,15 @@ function App() {
       }).eq("id",form.id);
       if(error) throw error;
       await loadMembers();
-      // Email selon changement de cotisation
+      // Email selon changement
       const ancien=members.find(m=>m.id===form.id);
       if(ancien && ancien.cotisation!==form.cotisation){
         if(form.cotisation==="payée") sendEmail(form.email,form.prenom,form.nom,form.role,"paiement");
         else if(form.cotisation==="en attente") sendEmail(form.email,form.prenom,form.nom,form.role,"en attente");
         else if(form.cotisation==="impayée") sendEmail(form.email,form.prenom,form.nom,form.role,"impayée");
+      } else {
+        // Modification du profil uniquement
+        sendEmail(form.email,form.prenom,form.nom,form.role,"modification");
       }
       setEditMember(null); setSel(null);
       const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
