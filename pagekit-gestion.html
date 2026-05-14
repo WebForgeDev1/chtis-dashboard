@@ -520,15 +520,41 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
 }
 
 /* ═══ INVOICES ═══ */
-function Invoices() {
+function Invoices({ members }) {
   const [filt,setFilt]=useState("toutes");
-  const list=INVOICES.filter(i=>filt==="toutes"||i.statut===filt);
-  const paid=INVOICES.filter(i=>i.statut==="payée").reduce((a,i)=>a+i.montant,0);
+  const [invoices,setInvoices]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  async function loadInvoices(){
+    setLoading(true);
+    const {data,error}=await sb.from("factures").select("*").order("created_at",{ascending:false});
+    if(!error) setInvoices(data||[]);
+    setLoading(false);
+  }
+
+  async function markPaid(inv){
+    await sb.from("factures").update({statut:"payée"}).eq("id",inv.id);
+    loadInvoices();
+  }
+
+  async function deleteInvoice(inv){
+    await sb.from("factures").delete().eq("id",inv.id);
+    loadInvoices();
+  }
+
+  React.useEffect(()=>{loadInvoices();},[]);
+
+  const list=invoices.filter(i=>filt==="toutes"||i.statut===filt);
+  const paid=invoices.filter(i=>i.statut==="payée").reduce((a,i)=>a+i.montant,0);
+  const pending=invoices.filter(i=>i.statut==="en attente").reduce((a,i)=>a+i.montant,0);
+  const unpaid=invoices.filter(i=>i.statut==="impayée").reduce((a,i)=>a+i.montant,0);
+
   const IST=[
-    {l:"Encaissé",v:`${paid} €`,s:`${INVOICES.filter(i=>i.statut==="payée").length} payées`,bg:"linear-gradient(127deg,#56ab2f,#a8e063)"},
-    {l:"En attente",v:`${INVOICES.filter(i=>i.statut==="en attente").length*25} €`,s:`${INVOICES.filter(i=>i.statut==="en attente").length} factures`,bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
-    {l:"Impayé",v:`${INVOICES.filter(i=>i.statut==="impayée").length*25} €`,s:`${INVOICES.filter(i=>i.statut==="impayée").length} factures`,bg:"linear-gradient(127deg,#fc5c7d,#6a3093)"},
+    {l:"Encaissé",v:`${paid} €`,s:`${invoices.filter(i=>i.statut==="payée").length} payées`,bg:"linear-gradient(127deg,#56ab2f,#a8e063)"},
+    {l:"En attente",v:`${pending} €`,s:`${invoices.filter(i=>i.statut==="en attente").length} factures`,bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
+    {l:"Impayé",v:`${unpaid} €`,s:`${invoices.filter(i=>i.statut==="impayée").length} factures`,bg:"linear-gradient(127deg,#fc5c7d,#6a3093)"},
   ];
+
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:20}}>
@@ -547,24 +573,29 @@ function Invoices() {
           <div style={{display:"flex",gap:6}}>
             {["toutes","payée","en attente","impayée"].map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}
           </div>
-          <button className="add-btn"><Icon name="plus" size={14} color="white" /> Nouvelle facture</button>
         </div>
+        {loading ? <div style={{padding:"40px",textAlign:"center",color:"var(--t4)"}}>Chargement...</div> :
         <table>
-          <thead><tr><th>N°</th><th>Membre</th><th>Objet</th><th>Date</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+          <thead><tr><th>Membre</th><th>Objet</th><th>Date</th><th>Montant</th><th>Statut</th><th>Actions</th></tr></thead>
           <tbody>
             {list.map(inv=>(
               <tr key={inv.id}>
-                <td style={{fontFamily:"monospace",fontWeight:700,fontSize:12.5,color:"#667eea"}}>{inv.id}</td>
-                <td style={{fontWeight:700}}>{inv.nom}</td>
+                <td style={{fontWeight:700}}>{inv.nom_membre}</td>
                 <td style={{color:"var(--t3)",fontSize:13}}>{inv.type}</td>
-                <td style={{color:"var(--t3)",fontSize:13}}>{fmtDate(inv.date)}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{new Date(inv.date).toLocaleDateString("fr-FR")}</td>
                 <td style={{fontWeight:800}}>{inv.montant} €</td>
                 <td><SBadge s={inv.statut} /></td>
-                <td><button className="pdf-btn">PDF</button></td>
+                <td>
+                  <div style={{display:"flex",gap:6}}>
+                    {inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
+                    <button className="pdf-btn">📄 PDF</button>
+                    <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>}
       </div>
     </div>
   );
@@ -1291,8 +1322,16 @@ function App() {
         montant:25, annee:new Date().getFullYear(), joined:new Date().toISOString().split("T")[0]
       }]).select();
       if(error) throw error;
+      // Créer facture automatiquement
+      await sb.from("factures").insert([{
+        membre_id: data[0]?.id||null,
+        nom_membre: `${form.prenom} ${form.nom}`,
+        montant: 25,
+        statut: form.cotisation||"en attente",
+        type: `Cotisation annuelle ${new Date().getFullYear()}`,
+        date: new Date().toISOString().split("T")[0]
+      }]);
       await loadMembers();
-      setShowAddModal(false);
       go("members");
       // Email bienvenue via EmailJS
       sendEmail(form.email, form.prenom, form.nom, form.role||"Membre", "bienvenue");
@@ -1358,7 +1397,7 @@ function App() {
       case "dashboard": return <Dashboard members={members} set={go} />;
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices />;
+      case "invoices":  return <Invoices members={members} />;
       case "email":       return <EmailPage members={members} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
