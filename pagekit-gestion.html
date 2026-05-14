@@ -1228,26 +1228,37 @@ function App() {
     }catch(e){console.error("GitHub sync error:",e);}
   }
 
-  // ── Resend email ──
-  const RESEND_KEY="re_LZeTRXJx_3rPfP91pAU1EVhSLoVVvxncN";
+  // ── EmailJS config ──
+  const EJS_SERVICE="service_dm3c4sw";
+  const EJS_TEMPLATE_WELCOME="template_q1ykzn9";
+  const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
-  async function sendEmail(to, subject, html){
+  async function sendEmail(to, prenom, nom, role, type){
+    if(!to || !to.includes("@")) return;
     try{
-      // On envoie toujours à l'admin en copie + au membre si email fourni
-      const recipients=["mujeeb_rahaman.rahmani.etu@univ-lemans.fr"];
-      if(to && to.includes("@") && !to.includes("univ-lemans")) recipients.unshift(to);
-      await fetch("https://api.resend.com/emails",{
+      const templateParams = type==="bienvenue" ? {
+        email: to,
+        prenom: prenom,
+        nom: nom,
+        role: role||"Membre"
+      } : {
+        email: to,
+        prenom: prenom,
+        nom: nom,
+        role: role||"Membre"
+      };
+      await fetch("https://api.emailjs.com/api/v1.0/email/send",{
         method:"POST",
-        headers:{"Authorization":`Bearer ${RESEND_KEY}`,"Content-Type":"application/json"},
+        headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          from:"Ch'tis en Maine <onboarding@resend.dev>",
-          to:recipients,
-          subject,
-          html
+          service_id: EJS_SERVICE,
+          template_id: EJS_TEMPLATE_WELCOME,
+          user_id: EJS_PUBLIC_KEY,
+          template_params: templateParams
         })
       });
-      console.log("✅ Email envoyé à",recipients);
-    }catch(e){console.error("Email error:",e);}
+      console.log("✅ Email envoyé à",to);
+    }catch(e){console.error("EmailJS error:",e);}
   }
 
   async function handleAddMember(form){
@@ -1262,28 +1273,8 @@ function App() {
       await loadMembers();
       setShowAddModal(false);
       go("members");
-      // Email bienvenue
-      sendEmail(
-        form.email,
-        "Bienvenue dans l'association Ch'tis en Maine !",
-        `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px">
-          <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:24px;border-radius:12px 12px 0 0;text-align:center">
-            <h1 style="color:white;margin:0;font-size:22px">Ch'tis en Maine</h1>
-            <p style="color:rgba(255,255,255,.8);margin:6px 0 0">Association des Gens du Nord</p>
-          </div>
-          <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
-            <h2 style="color:#1e1b4b">Bienvenue ${form.prenom} ${form.nom} ! 🎉</h2>
-            <p style="color:#374151;line-height:1.6">Nous sommes ravis de vous accueillir dans notre association <strong>Ch'tis en Maine</strong>.</p>
-            <p style="color:#374151;line-height:1.6">Votre adhésion a bien été enregistrée avec le rôle : <strong>${form.role||"Membre"}</strong>.</p>
-            <div style="background:#f5f3ff;border-radius:8px;padding:16px;margin:16px 0">
-              <p style="margin:0;color:#6366f1;font-weight:bold">Cotisation 2024 : 25 €</p>
-              <p style="margin:4px 0 0;color:#6b7280;font-size:14px">À régler dès que possible à l'association.</p>
-            </div>
-            <p style="color:#374151;line-height:1.6">Pour toute question, contactez-nous à : <a href="mailto:contact@chtis-en-maine.fr" style="color:#6366f1">contact@chtis-en-maine.fr</a></p>
-            <p style="color:#374151">Cordialement,<br><strong>L'administration — Ch'tis en Maine</strong></p>
-          </div>
-        </div>`
-      );
+      // Email bienvenue via EmailJS
+      sendEmail(form.email, form.prenom, form.nom, form.role||"Membre", "bienvenue");
       // Sync GitHub CA page
       const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
       if(!fresh.error) syncGitHub(fresh.data||[]);
@@ -1312,24 +1303,8 @@ function App() {
       if(error) throw error;
       await loadMembers();
       setDeleteMember(null); setSel(null);
-      // Email suppression
-      sendEmail(
-        m.email,
-        "Fin d'adhésion — Ch'tis en Maine",
-        `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px">
-          <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:24px;border-radius:12px 12px 0 0;text-align:center">
-            <h1 style="color:white;margin:0;font-size:22px">Ch'tis en Maine</h1>
-          </div>
-          <div style="background:white;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
-            <h2 style="color:#1e1b4b">Fin d'adhésion</h2>
-            <p style="color:#374151;line-height:1.6">Bonjour <strong>${m.prenom} ${m.nom}</strong>,</p>
-            <p style="color:#374151;line-height:1.6">Votre adhésion à l'association <strong>Ch'tis en Maine</strong> a pris fin.</p>
-            <p style="color:#374151;line-height:1.6">Nous vous remercions pour votre participation et espérons vous revoir bientôt.</p>
-            <p style="color:#374151;line-height:1.6">Pour toute question : <a href="mailto:contact@chtis-en-maine.fr" style="color:#6366f1">contact@chtis-en-maine.fr</a></p>
-            <p style="color:#374151">Cordialement,<br><strong>L'administration — Ch'tis en Maine</strong></p>
-          </div>
-        </div>`
-      );
+      // Email suppression via EmailJS
+      sendEmail(m.email, m.prenom, m.nom, m.role||"Membre", "suppression");
       const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
       if(!fresh.error) syncGitHub(fresh.data||[]);
     }catch(e){console.error("Delete error:",e);}
