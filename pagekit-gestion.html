@@ -2,8 +2,14 @@
 
 <div id="root"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script type="text/babel">
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
+
+// ══ SUPABASE CONFIG ══
+const SUPABASE_URL = "https://sdqdaqthfjlzwxlnoixp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5LUAwEZv_cK8n0FskHPxVw_6XbrqoV2";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ini = m => (m.prenom[0] + m.nom[0]).toUpperCase();
 const fmtDate = d => new Date(d).toLocaleDateString("fr-FR");
@@ -1167,14 +1173,142 @@ function App() {
   const [in_,setIn]=useState(false);
   const [page,setPage]=useState("dashboard");
   const [sel,setSel]=useState(null);
-  const [members,setMembers]=useState([...MEMBERS]);
+  const [members,setMembers]=useState([]);
+  const [loading,setLoading]=useState(false);
   const [showAddModal,setShowAddModal]=useState(false);
   const [editMember,setEditMember]=useState(null);
   const [deleteMember,setDeleteMember]=useState(null);
 
-  if (!in_) return <Login onLogin={()=>setIn(true)} />;
+  if (!in_) return <Login onLogin={()=>{setIn(true);loadMembers();}} />;
   function go(p){setPage(p);setSel(null);}
   const [bc,title]=PAGES[page]||["",""];
+
+  // ── Load members from Supabase ──
+  async function loadMembers(){
+    setLoading(true);
+    try {
+      const {data,error}=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(error) throw error;
+      // Map Supabase data to app format
+      const mapped=(data||[]).map((m,i)=>({
+        ...m,
+        prenom: m.prenom||"",
+        nom: m.nom||"",
+        joined: m.joined||m.created_at||new Date().toISOString(),
+        av: ((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase(),
+        grad: AV_GRADS[i%AV_GRADS.length]
+      }));
+      setMembers(mapped);
+      MEMBERS.length=0; mapped.forEach(m=>MEMBERS.push(m));
+    } catch(e){
+      console.error("Load error:",e);
+    }
+    setLoading(false);
+  }
+
+  // ── Sync CA page on GitHub ──
+  const GH_TOKEN="github_pat_11BXI4EAQ0sYZcekIPqwtF_HJBpPkL1JXqNqEYQXoUR3mEjsCfdWuKiF6ira2dmhqAC6Z";
+  const GH_REPO="WebForgeDev1/chtis-dashboard";
+  const GH_FILE="membres-ca.json";
+
+  async function syncGitHub(updatedMembers){
+    try{
+      const infoRes=await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`,{
+        headers:{Authorization:`Bearer ${GH_TOKEN}`,Accept:"application/vnd.github+json"}
+      });
+      const info=await infoRes.json();
+      const sha=info.sha;
+      const caList=updatedMembers.map(m=>({nom:`${m.prenom} ${m.nom}`,role:m.role}));
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify(caList,null,2))));
+      await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`,{
+        method:"PUT",
+        headers:{Authorization:`Bearer ${GH_TOKEN}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+        body:JSON.stringify({message:"Mise à jour membres CA",content,sha})
+      });
+    }catch(e){console.error("GitHub sync error:",e);}
+  }
+
+  async function handleAddMember(form){
+    try{
+      const {data,error}=await sb.from("membres").insert([{
+        prenom:form.prenom, nom:form.nom, email:form.email||"",
+        tel:form.tel||"", ville:form.ville||"", role:form.role||"Membre",
+        statut:form.statut||"actif", cotisation:form.cotisation||"en attente",
+        montant:25, annee:new Date().getFullYear(), joined:new Date().toISOString().split("T")[0]
+      }]).select();
+      if(error) throw error;
+      await loadMembers();
+      setShowAddModal(false);
+      go("members");
+      // Sync GitHub CA page
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){console.error("Add error:",e);}
+  }
+
+  async function handleEditMember(form){
+    try{
+      const {error}=await sb.from("membres").update({
+        prenom:form.prenom, nom:form.nom, email:form.email||"",
+        tel:form.tel||"", ville:form.ville||"", role:form.role||"Membre",
+        statut:form.statut||"actif", cotisation:form.cotisation||"en attente"
+      }).eq("id",form.id);
+      if(error) throw error;
+      await loadMembers();
+      setEditMember(null); setSel(null);
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){console.error("Edit error:",e);}
+  }
+
+  async function handleDeleteMember(){
+    try{
+      const {error}=await sb.from("membres").delete().eq("id",deleteMember.id);
+      if(error) throw error;
+      await loadMembers();
+      setDeleteMember(null); setSel(null);
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){console.error("Delete error:",e);}
+  }
+
+  async function handleMarkPaid(m){
+    try{
+      const {error}=await sb.from("membres").update({cotisation:"payée"}).eq("id",m.id);
+      if(error) throw error;
+      await loadMembers();
+      setSel({...m,cotisation:"payée"});
+    }catch(e){console.error("Mark paid error:",e);}
+  }
+
+  function render(){
+    if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",flexDirection:"column",gap:16}}><div style={{width:40,height:40,border:"4px solid #ede9fe",borderTop:"4px solid #667eea",borderRadius:"50%",animation:"spin 1s linear infinite"}}></div><div style={{color:"var(--t3)",fontSize:14}}>Chargement des données...</div></div>;
+    switch(page){
+      case "dashboard": return <Dashboard members={members} set={go} />;
+      case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
+      case "documents": return <DocsPage />;
+      case "invoices":  return <Invoices />;
+      case "email":       return <EmailPage members={members} />;
+      case "invoice-gen": return <InvoiceGenerator members={members} />;
+      case "add-member":  return <AddMember onCreated={()=>go("members")} />;
+      default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
+    }
+  }
+
+  return (
+    <div className="shell">
+      <Sidebar active={page} set={go} logout={()=>setIn(false)} />
+      <div className="main">
+        <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
+        <div className="page">{render()}</div>
+      </div>
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} />}
+      {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
+      {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
+      {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
+    </div>
+  );
+}
 
   // ── GitHub sync ──
   const GH_TOKEN = "github_pat_11BXI4EAQ0sYZcekIPqwtF_HJBpPkL1JXqNqEYQXoUR3mEjsCfdWuKiF6ira2dmhqAC6Z";
@@ -1689,6 +1823,7 @@ td{padding:12px 18px;font-size:13.5px;vertical-align:middle}
 /* ═══ TOAST ═══ */
 .toast{position:fixed;bottom:28px;right:28px;z-index:200;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:13px 18px;border-radius:var(--r-sm);box-shadow:0 8px 28px rgba(102,126,234,.4);font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px;animation:tIn .25s ease}
 @keyframes tIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* ═══ EMAIL PREVIEW ═══ */
 .pm{background:white;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
