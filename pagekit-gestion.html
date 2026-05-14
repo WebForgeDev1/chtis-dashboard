@@ -1231,33 +1231,29 @@ function App() {
   // ── EmailJS config ──
   const EJS_SERVICE="service_dm3c4sw";
   const EJS_TEMPLATE_WELCOME="template_q1ykzn9";
+  const EJS_TEMPLATE_GOODBYE="template_dr2x4xg";
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
   async function sendEmail(to, prenom, nom, role, type){
     if(!to || !to.includes("@")) return;
+    const templateId = type==="bienvenue" ? EJS_TEMPLATE_WELCOME : EJS_TEMPLATE_GOODBYE;
     try{
-      const templateParams = type==="bienvenue" ? {
-        email: to,
-        prenom: prenom,
-        nom: nom,
-        role: role||"Membre"
-      } : {
-        email: to,
-        prenom: prenom,
-        nom: nom,
-        role: role||"Membre"
-      };
       await fetch("https://api.emailjs.com/api/v1.0/email/send",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           service_id: EJS_SERVICE,
-          template_id: EJS_TEMPLATE_WELCOME,
+          template_id: templateId,
           user_id: EJS_PUBLIC_KEY,
-          template_params: templateParams
+          template_params: {
+            email: to,
+            prenom: prenom,
+            nom: nom,
+            role: role||"Membre"
+          }
         })
       });
-      console.log("✅ Email envoyé à",to);
+      console.log("✅ Email envoyé à",to,"template:",templateId);
     }catch(e){console.error("EmailJS error:",e);}
   }
 
