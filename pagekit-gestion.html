@@ -1239,27 +1239,27 @@ function App() {
     if(type==="bienvenue"){
       subject=`Bienvenue dans Ch'tis en Maine, ${prenom} !`;
       titre=`Bienvenue ${prenom} ${nom} ! 🎉`;
-      message=`Nous sommes ravis de vous accueillir dans notre association Ch'tis en Maine.\n\nVotre adhésion a bien été enregistrée. Nous espérons vous retrouver bientôt lors de nos événements !`;
+      message=`Nous sommes ravis de vous accueillir parmi nous.\n\nÀ très bientôt !`;
       header_color="linear-gradient(135deg,#667eea,#764ba2)";
     } else if(type==="en attente"){
-      subject=`Rappel — Votre cotisation est en attente, ${prenom}`;
-      titre=`⏳ Rappel de cotisation`;
-      message=`Bonjour ${prenom} ${nom},\n\nNous vous rappelons que votre cotisation est en attente de règlement.\n\nMerci de procéder au paiement dès que possible afin de maintenir votre adhésion active.`;
+      subject=`Votre cotisation — Ch'tis en Maine`;
+      titre=`Bonjour ${prenom} 👋`;
+      message=`Nous vous rappelons gentiment que votre cotisation est en attente.\n\nMerci de bien vouloir la régler dès que possible.`;
       header_color="linear-gradient(135deg,#d97706,#f59e0b)";
     } else if(type==="impayée"){
-      subject=`⚠️ Cotisation impayée — Ch'tis en Maine`;
-      titre=`⚠️ Cotisation impayée`;
-      message=`Bonjour ${prenom} ${nom},\n\nNous constatons que votre cotisation n'a pas encore été réglée.\n\nNous vous demandons de régulariser votre situation dans les plus brefs délais, faute de quoi votre adhésion pourra être suspendue.`;
+      subject=`Votre cotisation — Ch'tis en Maine`;
+      titre=`Bonjour ${prenom} 👋`;
+      message=`Nous n'avons pas encore reçu votre cotisation.\n\nMerci de bien vouloir régulariser votre situation.`;
       header_color="linear-gradient(135deg,#dc2626,#ef4444)";
     } else if(type==="paiement"){
-      subject=`✅ Merci pour votre cotisation — Ch'tis en Maine`;
-      titre=`✅ Merci pour votre paiement !`;
-      message=`Bonjour ${prenom} ${nom},\n\nNous avons bien reçu votre cotisation. Votre adhésion à l'association Ch'tis en Maine est maintenant à jour.\n\nMerci pour votre soutien et votre fidélité !`;
+      subject=`Merci — Ch'tis en Maine`;
+      titre=`Merci ${prenom} ! ✅`;
+      message=`Nous avons bien reçu votre cotisation. Merci beaucoup !`;
       header_color="linear-gradient(135deg,#059669,#10b981)";
     } else if(type==="suppression"){
-      subject=`Au revoir ${prenom}, nous espérons vous revoir !`;
-      titre=`Au revoir ${prenom} ${nom} 👋`;
-      message=`Votre adhésion à l'association Ch'tis en Maine a pris fin.\n\nNous vous remercions pour votre participation et espérons vous revoir bientôt parmi nous !`;
+      subject=`Au revoir — Ch'tis en Maine`;
+      titre=`Au revoir ${prenom} 👋`;
+      message=`Nous vous remercions pour votre participation et espérons vous revoir bientôt parmi nous !`;
       header_color="linear-gradient(135deg,#374151,#1f2937)";
     }
     try{
