@@ -1230,30 +1230,50 @@ function App() {
 
   // ── EmailJS config ──
   const EJS_SERVICE="service_dm3c4sw";
-  const EJS_TEMPLATE_WELCOME="template_q1ykzn9";
-  const EJS_TEMPLATE_GOODBYE="template_dr2x4xg";
+  const EJS_TEMPLATE="template_q1ykzn9";
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
   async function sendEmail(to, prenom, nom, role, type){
     if(!to || !to.includes("@")) return;
-    const templateId = type==="bienvenue" ? EJS_TEMPLATE_WELCOME : EJS_TEMPLATE_GOODBYE;
+    let subject, titre, message, header_color;
+    if(type==="bienvenue"){
+      subject=`Bienvenue dans Ch'tis en Maine, ${prenom} !`;
+      titre=`Bienvenue ${prenom} ${nom} ! 🎉`;
+      message=`Nous sommes ravis de vous accueillir dans notre association Ch'tis en Maine.\n\nVotre adhésion a bien été enregistrée avec le rôle : ${role||"Membre"}.\n\nVotre cotisation 2024 de 25€ est à régler dès que possible.`;
+      header_color="linear-gradient(135deg,#667eea,#764ba2)";
+    } else if(type==="en attente"){
+      subject=`Rappel — Votre cotisation est en attente, ${prenom}`;
+      titre=`⏳ Cotisation en attente ${prenom} ${nom}`;
+      message=`Nous vous rappelons que votre cotisation 2024 de 25€ est en attente de règlement.\n\nMerci de procéder au paiement dès que possible pour maintenir votre adhésion active.`;
+      header_color="linear-gradient(135deg,#d97706,#f59e0b)";
+    } else if(type==="impayée"){
+      subject=`⚠️ Cotisation impayée — Ch'tis en Maine`;
+      titre=`⚠️ Cotisation impayée — ${prenom} ${nom}`;
+      message=`Nous constatons que votre cotisation 2024 de 25€ n'a pas encore été réglée.\n\nNous vous demandons de régulariser votre situation dans les plus brefs délais, faute de quoi votre adhésion pourra être suspendue.`;
+      header_color="linear-gradient(135deg,#dc2626,#ef4444)";
+    } else if(type==="paiement"){
+      subject=`✅ Merci pour votre cotisation — Ch'tis en Maine`;
+      titre=`✅ Merci pour votre paiement ${prenom} !`;
+      message=`Nous avons bien reçu votre cotisation 2024 de 25€. Votre adhésion à l'association Ch'tis en Maine est maintenant à jour.\n\nMerci pour votre soutien et votre fidélité !`;
+      header_color="linear-gradient(135deg,#059669,#10b981)";
+    } else if(type==="suppression"){
+      subject=`Au revoir ${prenom}, nous espérons vous revoir !`;
+      titre=`Au revoir ${prenom} ${nom} 👋`;
+      message=`Votre adhésion à l'association Ch'tis en Maine a pris fin.\n\nNous vous remercions pour votre participation et espérons vous revoir bientôt !`;
+      header_color="linear-gradient(135deg,#374151,#1f2937)";
+    }
     try{
       await fetch("https://api.emailjs.com/api/v1.0/email/send",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           service_id: EJS_SERVICE,
-          template_id: templateId,
+          template_id: EJS_TEMPLATE,
           user_id: EJS_PUBLIC_KEY,
-          template_params: {
-            email: to,
-            prenom: prenom,
-            nom: nom,
-            role: role||"Membre"
-          }
+          template_params:{ email:to, prenom, nom, role:role||"Membre", subject, titre, message, header_color }
         })
       });
-      console.log("✅ Email envoyé à",to,"template:",templateId);
+      console.log("✅ Email envoyé:",type,"→",to);
     }catch(e){console.error("EmailJS error:",e);}
   }
 
@@ -1286,6 +1306,13 @@ function App() {
       }).eq("id",form.id);
       if(error) throw error;
       await loadMembers();
+      // Email selon changement de cotisation
+      const ancien=members.find(m=>m.id===form.id);
+      if(ancien && ancien.cotisation!==form.cotisation){
+        if(form.cotisation==="payée") sendEmail(form.email,form.prenom,form.nom,form.role,"paiement");
+        else if(form.cotisation==="en attente") sendEmail(form.email,form.prenom,form.nom,form.role,"en attente");
+        else if(form.cotisation==="impayée") sendEmail(form.email,form.prenom,form.nom,form.role,"impayée");
+      }
       setEditMember(null); setSel(null);
       const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
       if(!fresh.error) syncGitHub(fresh.data||[]);
@@ -1312,6 +1339,8 @@ function App() {
       if(error) throw error;
       await loadMembers();
       setSel({...m,cotisation:"payée"});
+      // Email confirmation paiement
+      sendEmail(m.email, m.prenom, m.nom, m.role||"Membre", "paiement");
     }catch(e){console.error("Mark paid error:",e);}
   }
 
