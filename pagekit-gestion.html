@@ -588,7 +588,30 @@ function Invoices({ members }) {
                 <td>
                   <div style={{display:"flex",gap:6}}>
                     {inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
-                    <button className="pdf-btn">📄 PDF</button>
+                    <button className="pdf-btn" onClick={()=>{
+                      const {jsPDF}=window.jspdf;
+                      const doc=new jsPDF();
+                      doc.setFillColor(102,126,234); doc.rect(0,0,210,42,'F');
+                      doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont('helvetica','bold');
+                      doc.text("Ch'tis en Maine",14,18);
+                      doc.setFontSize(10); doc.setFont('helvetica','normal');
+                      doc.text("Association loi 1901 · contact@chtis-en-maine.fr",14,27);
+                      doc.setFontSize(20); doc.setFont('helvetica','bold');
+                      doc.text("FACTURE",196,20,{align:"right"});
+                      doc.setFontSize(10); doc.setFont('helvetica','normal');
+                      doc.text("Date : "+new Date(inv.date).toLocaleDateString("fr-FR"),196,30,{align:"right"});
+                      doc.setDrawColor(102,126,234); doc.setLineWidth(0.8); doc.line(14,48,196,48);
+                      doc.setTextColor(30,30,30); doc.setFontSize(12); doc.setFont('helvetica','bold');
+                      doc.text(inv.nom_membre,14,62);
+                      doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+                      doc.text(inv.type,14,78);
+                      doc.setFillColor(102,126,234); doc.roundedRect(120,90,76,20,3,3,'F');
+                      doc.setTextColor(255,255,255); doc.setFontSize(8);
+                      doc.text("TOTAL",158,97,{align:"center"});
+                      doc.setFontSize(14); doc.setFont('helvetica','bold');
+                      doc.text(inv.montant+" EUR",158,105,{align:"center"});
+                      doc.save("Facture-"+inv.nom_membre.replace(/ /g,"-")+".pdf");
+                    }}>📄 PDF</button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
                 </td>
@@ -684,18 +707,112 @@ function DocsPage() {
 
 /* ═══ INVOICE GENERATOR PAGE ═══ */
 function InvoiceGenerator({ members }) {
-  const [nom, setNom] = useState("Dupont");
-  const [prenom, setPrenom] = useState("Jean");
-  const [email, setEmail] = useState("jean.dupont@example.com");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [email, setEmail] = useState("");
+  const [membreId, setMembreId] = useState(null);
   const [montant, setMontant] = useState("25");
-  const [objet, setObjet] = useState("Cotisation annuelle 2026");
-  const [date, setDate] = useState(new Date().toLocaleDateString("fr-FR"));
+  const [objet, setObjet] = useState("Cotisation annuelle 2024");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [generated, setGenerated] = useState(false);
-  const [num] = useState("FACT-2026-" + String(Math.floor(Math.random()*9000)+1000));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [num] = useState("FACT-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000));
 
   function pickMember(e) {
-    const m = members.find(m => m.id === parseInt(e.target.value));
-    if (m) { setNom(m.nom); setPrenom(m.prenom); setEmail(m.email); }
+    const m = members.find(m => m.id === e.target.value);
+    if (m) { setNom(m.nom); setPrenom(m.prenom); setEmail(m.email||""); setMembreId(m.id); }
+  }
+
+  async function generateAndSave(){
+    setGenerated(true);
+    if(nom && prenom){
+      setSaving(true);
+      await sb.from("factures").insert([{
+        membre_id: membreId||null,
+        nom_membre: `${prenom} ${nom}`,
+        montant: parseFloat(montant)||25,
+        statut: "en attente",
+        type: objet,
+        date: date
+      }]);
+      setSaving(false);
+      setSaved(true);
+    }
+  }
+
+  function downloadPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const dateStr = date ? new Date(date).toLocaleDateString("fr-FR") : new Date().toLocaleDateString("fr-FR");
+
+    // Header background
+    doc.setFillColor(102,126,234);
+    doc.rect(0,0,210,42,'F');
+
+    // Logo text
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(22); doc.setFont('helvetica','bold');
+    doc.text("Ch'tis en Maine", 14, 18);
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text("Association loi 1901 · contact@chtis-en-maine.fr", 14, 27);
+    doc.text("Sarthe, Pays de la Loire", 14, 34);
+
+    // Invoice title
+    doc.setFontSize(26); doc.setFont('helvetica','bold');
+    doc.text("FACTURE", 196, 20, {align:"right"});
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text("N° "+num, 196, 29, {align:"right"});
+    doc.text("Date : "+dateStr, 196, 36, {align:"right"});
+
+    // Divider
+    doc.setDrawColor(102,126,234); doc.setLineWidth(0.8);
+    doc.line(14, 48, 196, 48);
+
+    // Billed to / From
+    doc.setTextColor(150,150,150); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text("FACTURÉ À", 14, 58);
+    doc.text("ÉMIS PAR", 110, 58);
+
+    doc.setTextColor(30,30,30); doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text(prenom+" "+nom, 14, 66);
+    doc.text("Ch'tis en Maine", 110, 66);
+    doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+    if(email) doc.text(email, 14, 73);
+    doc.text("contact@chtis-en-maine.fr", 110, 73);
+    doc.text("Sarthe, Pays de la Loire", 110, 79);
+
+    // Table
+    doc.setFillColor(248,250,252); doc.rect(14,90,182,10,'F');
+    doc.setTextColor(150,150,150); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text("DESCRIPTION", 16, 97);
+    doc.text("MONTANT", 185, 97, {align:"right"});
+
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.3);
+    doc.line(14, 100, 196, 100);
+
+    doc.setTextColor(30,30,30); doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(objet, 16, 109);
+    doc.setFont('helvetica','bold');
+    doc.text(parseFloat(montant).toFixed(2)+" EUR", 185, 109, {align:"right"});
+    doc.line(14, 113, 196, 113);
+
+    // Total box
+    doc.setFillColor(102,126,234);
+    doc.roundedRect(120, 120, 76, 22, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text("MONTANT TOTAL", 158, 128, {align:"center"});
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text(parseFloat(montant).toFixed(2)+" EUR", 158, 137, {align:"center"});
+
+    // Footer
+    doc.setFillColor(248,250,252); doc.rect(14, 260, 182, 18, 'F');
+    doc.setTextColor(120,120,120); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text("Merci de votre confiance — Ch'tis en Maine · Association loi 1901", 105, 268, {align:"center"});
+    doc.text("contact@chtis-en-maine.fr · Sarthe, Pays de la Loire", 105, 275, {align:"center"});
+
+    doc.save("Facture-"+num+".pdf");
   }
 
   return (
@@ -716,47 +833,26 @@ function InvoiceGenerator({ members }) {
               {members.map(m => <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>)}
             </select>
           </div>
-          <div style={{height:1, background:"var(--t6)", margin:"2px 0"}} />
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-            <div>
-              <div className="clabel">Nom</div>
-              <input className="ci" value={nom} onChange={e=>setNom(e.target.value)} />
-            </div>
-            <div>
-              <div className="clabel">Prénom</div>
-              <input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} />
-            </div>
+          <div style={{height:1,background:"var(--t6)",margin:"2px 0"}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div className="clabel">Prénom</div><input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} placeholder="Jean"/></div>
+            <div><div className="clabel">Nom</div><input className="ci" value={nom} onChange={e=>setNom(e.target.value)} placeholder="Dupont"/></div>
           </div>
-          <div>
-            <div className="clabel">Email</div>
-            <input className="ci" type="email" value={email} onChange={e=>setEmail(e.target.value)} />
+          <div><div className="clabel">Email</div><input className="ci" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="jean@email.fr"/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div className="clabel">Montant (€)</div><input className="ci" value={montant} onChange={e=>setMontant(e.target.value)}/></div>
+            <div><div className="clabel">Date</div><input className="ci" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
           </div>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-            <div>
-              <div className="clabel">Montant (€)</div>
-              <input className="ci" value={montant} onChange={e=>setMontant(e.target.value)} />
-            </div>
-            <div>
-              <div className="clabel">Date</div>
-              <input className="ci" value={date} onChange={e=>setDate(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <div className="clabel">Objet</div>
-            <input className="ci" value={objet} onChange={e=>setObjet(e.target.value)} />
-          </div>
-          <button className="send-btn" onClick={()=>setGenerated(true)}>
-            <Icon name="invoice" size={15} color="white" /> Générer la facture
+          <div><div className="clabel">Objet</div><input className="ci" value={objet} onChange={e=>setObjet(e.target.value)}/></div>
+          {saved&&<div style={{background:"#f0fdf4",color:"#059669",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600}}>✅ Facture sauvegardée dans Supabase !</div>}
+          <button className="send-btn" onClick={generateAndSave} disabled={saving}>
+            <Icon name="invoice" size={15} color="white"/> {saving?"Sauvegarde...":"Générer et sauvegarder"}
           </button>
-          {generated && (
-            <button style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
-              onMouseOver={e=>e.currentTarget.style.background="#EBF4FF"}
-              onMouseOut={e=>e.currentTarget.style.background="white"}>
+          {generated&&(
+            <button onClick={downloadPDF} style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               ⬇ Télécharger le PDF
             </button>
           )}
-        </div>
-      </div>
 
       {/* Preview */}
       <div className="card" style={{overflow:"visible"}}>
@@ -1917,3 +2013,4 @@ td{padding:12px 18px;font-size:13.5px;vertical-align:middle}
 .doc-full{padding:16px;border:1.5px solid var(--t6);border-radius:var(--r-sm);transition:all .15s;cursor:pointer;background:white}
 .doc-full:hover{border-color:rgba(102,126,234,.35);box-shadow:var(--sh);transform:translateY(-1px)}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
