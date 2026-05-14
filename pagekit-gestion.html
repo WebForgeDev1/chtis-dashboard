@@ -1234,7 +1234,7 @@ function App() {
   async function sendEmail(to, subject, html){
     try{
       // On envoie toujours à l'admin en copie + au membre si email fourni
-      const recipients=["mujeebrahamanrahmani2122@gmail.com"];
+      const recipients=["mujeeb_rahaman.rahmani.etu@univ-lemans.fr"];
       if(to && to.includes("@") && !to.includes("univ-lemans")) recipients.unshift(to);
       await fetch("https://api.resend.com/emails",{
         method:"POST",
