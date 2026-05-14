@@ -1373,34 +1373,6 @@ function App() {
     setSel({...m,cotisation:"payée"});
   }
 
-  function render(){
-    switch(page){
-      case "dashboard": return <Dashboard members={members} set={go} />;
-      case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
-      case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices />;
-      case "email":       return <EmailPage members={members} />;
-      case "invoice-gen": return <InvoiceGenerator members={members} />;
-      case "add-member":  return <AddMember onCreated={()=>go("members")} />;
-      default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
-    }
-  }
-
-  return (
-    <div className="shell">
-      <Sidebar active={page} set={go} logout={()=>setIn(false)} />
-      <div className="main">
-        <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
-        <div className="page">{render()}</div>
-      </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} />}
-      {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
-      {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
-      {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
-    </div>
-  );
-}
-
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 
