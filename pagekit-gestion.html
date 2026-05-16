@@ -922,7 +922,7 @@ function InvoiceGenerator({ members }) {
 
 /* ═══ ADD MEMBER PAGE ═══ */
 function AddMember({ onCreated }) {
-  const [step, setStep] = useState(1); // 1=info, 2=access, 3=done
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
     login:"", password:"", confirm:"", cotisation:"non payée", statut:"actif"
