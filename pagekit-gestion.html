@@ -227,9 +227,9 @@ function Dashboard({ members, set }) {
   const [sent,setSent]=useState(false); const [sending,setSending]=useState(false);
   function doSend(){if(!subj||!msg)return;setSending(true);setTimeout(()=>{setSending(false);setSent(true);setSubj("");setMsg("");setTimeout(()=>setSent(false),3000)},1400)}
 
-  const [igNom,setIgNom]=useState("Dupont"); const [igPre,setIgPre]=useState("Jean");
-  const [igMt,setIgMt]=useState("50,00"); const [igObj,setIgObj]=useState("Cotisation annuelle 2026");
-  const [igDate,setIgDate]=useState("28/04/2026"); const [igGen,setIgGen]=useState(false);
+  const [igNom,setIgNom]=useState(""); const [igPre,setIgPre]=useState("");
+  const [igMt,setIgMt]=useState("25"); const [igObj,setIgObj]=useState("Cotisation annuelle 2024");
+  const [igDate,setIgDate]=useState(new Date().toISOString().split("T")[0]); const [igGen,setIgGen]=useState(false);
 
   return (
     <div>
@@ -390,9 +390,48 @@ function Dashboard({ members, set }) {
               </div>
               <div>
                 <div className="clabel">Date</div>
-                <input className="ci" value={igDate} onChange={e=>setIgDate(e.target.value)} />
+                <input className="ci" type="date" value={igDate} onChange={e=>setIgDate(e.target.value)} />
               </div>
-              <button className="send-btn" onClick={()=>setIgGen(true)}>Générer la facture</button>
+              <button className="send-btn" onClick={async ()=>{
+                setIgGen(true);
+                // Save to Supabase
+                await sb.from("factures").insert([{
+                  nom_membre:`${igPre} ${igNom}`,
+                  montant:parseFloat(igMt)||25,
+                  statut:"en attente",
+                  type:igObj,
+                  date:igDate
+                }]);
+                // Generate PDF
+                const {jsPDF}=window.jspdf;
+                const doc=new jsPDF();
+                const dateStr=igDate?new Date(igDate).toLocaleDateString("fr-FR"):new Date().toLocaleDateString("fr-FR");
+                doc.setFillColor(102,126,234); doc.rect(0,0,210,42,"F");
+                doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont("helvetica","bold");
+                doc.text("Ch'tis en Maine",14,18);
+                doc.setFontSize(10); doc.setFont("helvetica","normal");
+                doc.text("Association loi 1901 - contact@chtis-en-maine.fr",14,27);
+                doc.setFontSize(24); doc.setFont("helvetica","bold");
+                doc.text("FACTURE",196,22,{align:"right"});
+                doc.setFontSize(10); doc.setFont("helvetica","normal");
+                doc.text("Date : "+dateStr,196,31,{align:"right"});
+                doc.setDrawColor(102,126,234); doc.setLineWidth(0.8); doc.line(14,48,196,48);
+                doc.setTextColor(30,30,30); doc.setFontSize(12); doc.setFont("helvetica","bold");
+                doc.text(igPre+" "+igNom,14,62);
+                doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,100);
+                doc.text(igObj,14,78);
+                doc.setFillColor(102,126,234); doc.roundedRect(120,90,76,22,3,3,"F");
+                doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont("helvetica","normal");
+                doc.text("MONTANT TOTAL",158,97,{align:"center"});
+                doc.setFontSize(16); doc.setFont("helvetica","bold");
+                doc.text(igMt+" EUR",158,108,{align:"center"});
+                doc.setFillColor(248,250,252); doc.rect(14,260,182,18,"F");
+                doc.setTextColor(120,120,120); doc.setFontSize(9); doc.setFont("helvetica","normal");
+                doc.text("Merci de votre confiance - Ch'tis en Maine - Association loi 1901",105,270,{align:"center"});
+                doc.save("Facture-"+igPre+"-"+igNom+".pdf");
+              }}>
+                <Icon name="invoice" size={14} color="white"/> Générer la facture
+              </button>
               {igGen && (
                 <button style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}
                   onMouseOver={e=>e.currentTarget.style.background="#EBF4FF"}
