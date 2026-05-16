@@ -213,7 +213,7 @@ function Dashboard({ members, set }) {
   const NEWS = [
     {title:"Assemblée générale 2026",        body:"L'assemblée générale aura lieu le 12 mai à 18h.",               date:"28/04"},
     {title:"Nouveau document disponible",    body:"Le compte-rendu de la réunion est maintenant disponible.",      date:"27/04"},
-    {title:"Sortie annuelle — inscriptions", body:"Inscriptions ouvertes pour la sortie annuelle en Normandie.",   date:"26/04"},
+    {title:"Sortie annuelle - inscriptions", body:"Inscriptions ouvertes pour la sortie annuelle en Normandie.",   date:"26/04"},
   ];
 
   const DOCS = [
@@ -233,7 +233,7 @@ function Dashboard({ members, set }) {
 
   return (
     <div>
-      {/* Stats */}
+      
       <div className="stat-row">
         {STATS.map(s => (
           <div key={s.label} className="sc" style={{background:s.bg}}>
@@ -245,7 +245,7 @@ function Dashboard({ members, set }) {
         ))}
       </div>
 
-      {/* Row 1 */}
+      
       <div className="row">
         <div className="col">
           <div className="card mb18">
@@ -307,7 +307,7 @@ function Dashboard({ members, set }) {
         </div>
       </div>
 
-      {/* Row 2 */}
+      
       <div className="row" style={{alignItems:"start"}}>
         <div className="col">
           <div className="card">
@@ -809,7 +809,7 @@ function InvoiceGenerator({ members }) {
     // Footer
     doc.setFillColor(248,250,252); doc.rect(14, 260, 182, 18, 'F');
     doc.setTextColor(120,120,120); doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text("Merci de votre confiance — Ch'tis en Maine · Association loi 1901", 105, 268, {align:"center"});
+    doc.text("Merci de votre confiance - Ch'tis en Maine · Association loi 1901", 105, 268, {align:"center"});
     doc.text("contact@chtis-en-maine.fr · Sarthe, Pays de la Loire", 105, 275, {align:"center"});
 
     doc.save("Facture-"+num+".pdf");
@@ -817,7 +817,7 @@ function InvoiceGenerator({ members }) {
 
   return (
     <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"start"}}>
-      {/* Form */}
+      
       <div className="card">
         <div className="card-hd">
           <div style={{width:32,height:32,borderRadius:9,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:4}}>
@@ -829,7 +829,7 @@ function InvoiceGenerator({ members }) {
           <div>
             <div className="clabel">Choisir un membre existant</div>
             <select className="csel" onChange={pickMember} defaultValue="">
-              <option value="" disabled>— Sélectionner un membre —</option>
+              <option value="" disabled>- Sélectionner un membre -</option>
               {members.map(m => <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>)}
             </select>
           </div>
@@ -854,14 +854,14 @@ function InvoiceGenerator({ members }) {
             </button>
           )}
 
-      {/* Preview */}
+      
       <div className="card" style={{overflow:"visible"}}>
         <div className="card-hd">
           <div className="card-title">Aperçu de la facture</div>
           {generated && <span className="badge bg">Générée</span>}
         </div>
         <div style={{padding:"28px 28px 24px", fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-          {/* Header */}
+          
           <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:28}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:38,height:38,borderRadius:10,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -879,7 +879,7 @@ function InvoiceGenerator({ members }) {
             </div>
           </div>
           <div style={{height:2,background:"linear-gradient(90deg,#667eea,#764ba2)",borderRadius:2,marginBottom:24}} />
-          {/* Billed to */}
+          
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
             <div>
               <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Facturé à</div>
@@ -893,7 +893,7 @@ function InvoiceGenerator({ members }) {
               <div style={{fontSize:12.5,color:"var(--t3)"}}>Sarthe, Pays de la Loire</div>
             </div>
           </div>
-          {/* Table */}
+          
           <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:20}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:0}}>
               <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)"}}>Description</div>
@@ -904,7 +904,7 @@ function InvoiceGenerator({ members }) {
               <div style={{padding:"12px 14px",fontSize:13.5,fontWeight:700,color:"var(--t1)",textAlign:"right"}}>{montant} €</div>
             </div>
           </div>
-          {/* Total */}
+          
           <div style={{display:"flex",justifyContent:"flex-end"}}>
             <div style={{background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:"var(--r-sm)",padding:"14px 22px",color:"white",minWidth:160,textAlign:"right"}}>
               <div style={{fontSize:11.5,opacity:.8,marginBottom:3}}>Montant total</div>
@@ -912,7 +912,7 @@ function InvoiceGenerator({ members }) {
             </div>
           </div>
           <div style={{marginTop:20,padding:14,background:"var(--bg)",borderRadius:"var(--r-sm)",fontSize:12,color:"var(--t4)",textAlign:"center"}}>
-            Merci de votre confiance — Ch'tis en Maine · Association loi 1901
+            Merci de votre confiance - Ch'tis en Maine · Association loi 1901
           </div>
         </div>
       </div>
@@ -922,13 +922,21 @@ function InvoiceGenerator({ members }) {
 
 /* ADD MEMBER PAGE */
 function AddMember({ onCreated }) {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
+  const stepState = useState(1);
+  const step = stepState[0];
+  const setStep = stepState[1];
+  const formState = useState({
     prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
-    login:"", password:"", confirm:"", cotisation:"non payée", statut:"actif"
+    login:"", password:"", confirm:"", cotisation:"en attente", statut:"actif"
   });
-  const [errors, setErrors] = useState({});
-  const [showPass, setShowPass] = useState(false);
+  const form = formState[0];
+  const setForm = formState[1];
+  const errState = useState({});
+  const errors = errState[0];
+  const setErrors = errState[1];
+  const passState = useState(false);
+  const showPass = passState[0];
+  const setShowPass = passState[1];
 
   function upd(k, v) { setForm(f=>({...f,[k]:v})); if(errors[k]) setErrors(e=>({...e,[k]:""})); }
 
@@ -978,7 +986,7 @@ function AddMember({ onCreated }) {
 
   return (
     <div style={{maxWidth:780, margin:"0 auto"}}>
-      {/* Stepper */}
+      
       <div className="card" style={{marginBottom:20}}>
         <div style={{padding:"20px 28px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div className="card-title">Ajouter un nouveau membre</div>
@@ -994,7 +1002,7 @@ function AddMember({ onCreated }) {
         </div>
       </div>
 
-      {/* Step 1: Personal info */}
+      
       {step===1 && (
         <div className="card">
           <div className="card-hd"><div className="card-title">Informations personnelles</div></div>
@@ -1051,7 +1059,7 @@ function AddMember({ onCreated }) {
         </div>
       )}
 
-      {/* Step 2: Login & password */}
+      
       {step===2 && (
         <div className="card">
           <div className="card-hd">
@@ -1122,7 +1130,7 @@ function AddMember({ onCreated }) {
         </div>
       )}
 
-      {/* Step 3: Confirmation */}
+      
       {step===3 && (
         <div className="card" style={{textAlign:"center",padding:"52px 40px"}}>
           <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#56ab2f,#a8e063)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",boxShadow:"0 8px 24px rgba(86,171,47,.3)",fontSize:32}}>
@@ -1369,27 +1377,27 @@ function App() {
       message=`Nous sommes ravis de vous accueillir parmi nous.\n\nÀ très bientôt !`;
       header_color="linear-gradient(135deg,#667eea,#764ba2)";
     } else if(type==="modification"){
-      subject=`Vos informations ont été mises à jour — Ch'tis en Maine`;
+      subject=`Vos informations ont été mises à jour - Ch'tis en Maine`;
       titre=`Mise à jour de votre profil ✏️`;
       message=`Bonjour ${prenom} ${nom},\n\nVos informations ont bien été mises à jour dans notre association.\n\nSi vous n'êtes pas à l'origine de cette modification, contactez-nous immédiatement.`;
       header_color="linear-gradient(135deg,#2563eb,#3b82f6)";
     } else if(type==="en attente"){
-      subject=`Votre cotisation — Ch'tis en Maine`;
+      subject=`Votre cotisation - Ch'tis en Maine`;
       titre=`Bonjour ${prenom} 👋`;
       message=`Nous vous rappelons gentiment que votre cotisation est en attente.\n\nMerci de bien vouloir la régler dès que possible.`;
       header_color="linear-gradient(135deg,#d97706,#f59e0b)";
     } else if(type==="impayée"){
-      subject=`Votre cotisation — Ch'tis en Maine`;
+      subject=`Votre cotisation - Ch'tis en Maine`;
       titre=`Bonjour ${prenom} 👋`;
       message=`Nous n'avons pas encore reçu votre cotisation.\n\nMerci de bien vouloir régulariser votre situation.`;
       header_color="linear-gradient(135deg,#dc2626,#ef4444)";
     } else if(type==="paiement"){
-      subject=`Merci — Ch'tis en Maine`;
+      subject=`Merci - Ch'tis en Maine`;
       titre=`Merci ${prenom} ! ✅`;
       message=`Nous avons bien reçu votre cotisation. Merci beaucoup !`;
       header_color="linear-gradient(135deg,#059669,#10b981)";
     } else if(type==="suppression"){
-      subject=`Au revoir — Ch'tis en Maine`;
+      subject=`Au revoir - Ch'tis en Maine`;
       titre=`Au revoir ${prenom} 👋`;
       message=`Nous vous remercions pour votre participation et espérons vous revoir bientôt parmi nous !`;
       header_color="linear-gradient(135deg,#374151,#1f2937)";
@@ -1529,7 +1537,7 @@ function App() {
       });
       const info = await infoRes.json();
       const sha = info.sha;
-      // 2. Build CA list — only keep nom + role
+      // 2. Build CA list - only keep nom + role
       const caList = updatedMembers.map(m => ({ nom: `${m.prenom} ${m.nom}`, role: m.role }));
       const content = btoa(unescape(encodeURIComponent(JSON.stringify(caList, null, 2))));
       // 3. Push update
@@ -1594,7 +1602,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script>
-// Données des membres — Ch'tis en Maine (mutable)
+// Données des membres - Ch'tis en Maine (mutable)
 let _nextId = 13;
 let MEMBERS = [
   { id: 1, nom: "VANDENBERGHE", prenom: "Bernadette", email: "contact@chtis-en-maine.fr", tel: "+33 6 80 08 78 28", ville: "Sarthe", statut: "actif", cotisation: "payée", montant: 25, annee: 2024, joined: "2018-01-01", role: "Présidente" },
