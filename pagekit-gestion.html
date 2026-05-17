@@ -259,11 +259,11 @@ const NAVS = [
 
 function Sidebar({ active, set, logout, currentAdmin, canAccess }) {
   const MAIN_IDS  = ["dashboard","members","contacts","documents","invoices","email","events","messages"];
-  const TOOLS_IDS = ["invoice-gen","add-member"];
+  const TOOLS_IDS = ["invoice-gen"];
   const ADMIN_IDS = ["settings"];
 
   function navItem(n){
-    if(!["dashboard","settings","invoice-gen","add-member"].includes(n.id) && !canAccess(n.id)) return null;
+    if(!["dashboard","settings","invoice-gen"].includes(n.id) && !canAccess(n.id)) return null;
     return (
       <div key={n.id} className={`ni ${active===n.id?"active":""}`} onClick={()=>set(n.id)}>
         <div className="ni-ico"><Icon name={n.icon} size={15} color={active===n.id?"white":"#718096"}/></div>
@@ -297,6 +297,10 @@ function Sidebar({ active, set, logout, currentAdmin, canAccess }) {
         {(!currentAdmin||currentAdmin.isSuperAdmin) && (<>
           <div className="sb-section" style={{marginTop:12}}>Admin</div>
           {NAVS.filter(n=>ADMIN_IDS.includes(n.id)).map(navItem)}
+          <div className={`ni ${active==="add-admin"?"active":""}`} onClick={()=>set("add-admin")}>
+            <div className="ni-ico"><Icon name="plus" size={15} color={active==="add-admin"?"white":"#718096"}/></div>
+            Ajouter un admin
+          </div>
         </>)}
       </nav>
       <div className="sb-bot">
@@ -2536,9 +2540,9 @@ function EventsPage({members, onSend}){
 }
 
 /* ── SETTINGS / ADMINS PAGE ── */
-function SettingsPage({ currentAdmin, onSend }) {
+function SettingsPage({ currentAdmin, onSend, autoOpen }) {
   const [admins, setAdmins] = React.useState(()=>JSON.parse(localStorage.getItem(ADMINS_LS)||"[]"));
-  const [showModal, setShowModal] = React.useState(false);
+  const [showModal, setShowModal] = React.useState(!!autoOpen);
   const [editing, setEditing] = React.useState(null); // null = add, obj = edit
   const [delTarget, setDelTarget] = React.useState(null);
 
@@ -2722,15 +2726,19 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
     if(!validate()) return;
     const {confirm, ...data} = form;
     if(!data.password && admin) data.password = admin.password;
-    onSave(data);
-    // Send welcome email only for new admins
+
+    // Send welcome email FIRST (before modal closes), only for new admins
     if(!admin && onSend && form.email.includes("@")){
       setSending(true);
       const subject = `Vos accès administrateur — Ch'tis en Maine`;
-      const message = `Bonjour ${form.prenom},\n\nVous avez été ajouté(e) en tant que ${form.role} de l'association Ch'tis en Maine.\n\nVoici vos identifiants de connexion :\n\n📧 Email (identifiant) : ${form.email}\n🔑 Mot de passe : ${form.password}\n\nConnectez-vous sur le tableau de bord et pensez à changer votre mot de passe lors de votre première connexion.\n\nBienvenue dans l'équipe !\n\nCordialement,\nL'équipe Ch'tis en Maine`;
+      const message = `Bonjour ${form.prenom},\n\nVous avez été ajouté(e) en tant que ${form.role} de l'association Ch'tis en Maine.\n\nVoici vos identifiants de connexion :\n\n📧 Email (identifiant) : ${form.email}\n🔑 Mot de passe : ${form.password}\n\nRendez-vous sur le tableau de bord administrateur et changez votre mot de passe lors de votre première connexion.\n\nBienvenue dans l'équipe !\n\nCordialement,\nL'équipe Ch'tis en Maine`;
       await onSend(form.email, form.prenom, form.nom, subject, message, "admin");
-      setSending(false); setSent(true);
+      setSending(false);
+      setSent(true);
+      await new Promise(r=>setTimeout(r,1200)); // brief pause so user sees "✅ Email envoyé"
     }
+
+    onSave(data); // Now close the modal
   }
 
   const ACTION_COLORS={"voir":"#2563eb","ajouter":"#059669","modifier":"#d97706","supprimer":"#dc2626"};
@@ -3026,7 +3034,8 @@ const PAGES = {
   messages: ["Communications","Messages"],
   "invoice-gen": ["Outils","Générateur de facture"],
   "add-member":  ["Membres","Ajouter un membre"],
-  settings: ["Admin","Paramètres"],
+  settings:   ["Admin","Paramètres"],
+  "add-admin":["Admin","Ajouter un administrateur"],
 };
 
 /* MEMBER MODAL */
@@ -3391,7 +3400,8 @@ function App() {
       case "contacts":    return <Contacts />;
       case "events":      return <EventsPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"événement")} />;
       case "messages":    return <MessagesPage />;
-      case "settings":    return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} />;
+      case "settings":    return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={false} />;
+      case "add-admin":   return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={true} />;
       default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
     }
   }
