@@ -593,8 +593,31 @@ function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
 }
 
 /* DRAWER */
-function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
+function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoices }) {
   if (!m) return null;
+  const [showEmail, setShowEmail] = useState(false);
+  const [emailType, setEmailType] = useState("bienvenue");
+  const [sending, setSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  async function doSendEmail(){
+    if(!m.email||!m.email.includes("@")){ alert("Ce membre n'a pas d'adresse e-mail valide."); return; }
+    setSending(true);
+    await onEmail(emailType);
+    setSending(false);
+    setEmailSent(true);
+    setShowEmail(false);
+    setTimeout(()=>setEmailSent(false), 3000);
+  }
+
+  const EMAIL_TYPES = [
+    {v:"bienvenue",    l:"Message de bienvenue"},
+    {v:"en attente",   l:"Rappel cotisation en attente"},
+    {v:"impayée",      l:"Relance cotisation impayée"},
+    {v:"paiement",     l:"Confirmation de paiement"},
+    {v:"modification", l:"Mise à jour du profil"},
+  ];
+
   return (
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&close()}>
       <div className="drawer">
@@ -607,7 +630,7 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
         <div className="dr-body">
           <div style={{marginBottom:18}}>
             <div className="dr-st">Coordonnées</div>
-            {[{i:"mail",l:"E-mail",v:m.email},{i:"phone",l:"Téléphone",v:m.tel},{i:"location",l:"Ville",v:m.ville}].map(r=>(
+            {[{i:"mail",l:"E-mail",v:m.email||"—"},{i:"phone",l:"Téléphone",v:m.tel||"—"},{i:"location",l:"Ville",v:m.ville||"—"}].map(r=>(
               <div key={r.l} className="ir">
                 <div className="ir-ico"><Icon name={r.i} size={14} color="#718096" /></div>
                 <div><div className="ir-l">{r.l}</div><div className="ir-v">{r.v}</div></div>
@@ -617,16 +640,39 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
           <div style={{marginBottom:18}}>
             <div className="dr-st">Adhésion</div>
             <div className="ir"><div className="ir-ico"><Icon name="date" size={14} color="#718096" /></div><div><div className="ir-l">Membre depuis</div><div className="ir-v">{new Date(m.joined).toLocaleDateString("fr-FR",{year:"numeric",month:"long",day:"numeric"})}</div></div></div>
-            <div className="ir"><div className="ir-ico"><Icon name="card" size={14} color="#718096" /></div><div><div className="ir-l">Cotisation 2024</div><div className="ir-v"><SBadge s={m.cotisation} /></div></div></div>
+            <div className="ir"><div className="ir-ico"><Icon name="card" size={14} color="#718096" /></div><div><div className="ir-l">Cotisation</div><div className="ir-v"><SBadge s={m.cotisation} /></div></div></div>
             <div className="ir"><div className="ir-ico"><Icon name="user" size={14} color="#718096" /></div><div><div className="ir-l">Statut</div><div className="ir-v"><MBadge s={m.statut} /></div></div></div>
           </div>
+
+          {showEmail&&(
+            <div style={{background:"#F8FAFC",border:"1.5px solid var(--t6)",borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Type de message</div>
+              {EMAIL_TYPES.map(t=>(
+                <label key={t.v} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",cursor:"pointer",fontSize:13,color:emailType===t.v?"var(--indigo)":"var(--t2)",fontWeight:emailType===t.v?700:400,borderBottom:"1px solid var(--t6)"}}>
+                  <input type="radio" name="emailType" value={t.v} checked={emailType===t.v} onChange={()=>setEmailType(t.v)} style={{accentColor:"#667eea"}}/>
+                  {t.l}
+                </label>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>setShowEmail(false)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid var(--t6)",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
+                <button onClick={doSendEmail} disabled={sending} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#667eea,#764ba2)",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:sending?.6:1}}>
+                  {sending?"Envoi…":"✉ Envoyer"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {emailSent&&<div style={{background:"#ECFDF5",color:"#065F46",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ E-mail envoyé à {m.email}</div>}
+
           <div>
             <div className="dr-st">Actions</div>
             <div className="act-list">
-              <button className="ab ab-p"><Icon name="mail" size={14} color="white" /> Envoyer un e-mail</button>
+              <button className="ab ab-p" onClick={()=>setShowEmail(v=>!v)}>
+                <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer la messagerie":"Envoyer un e-mail"}
+              </button>
               <button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
               {m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
-              <button className="ab ab-s"><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
+              <button className="ab ab-s" onClick={onViewInvoices}><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
               <button className="ab ab-d" onClick={onDelete}><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>
             </div>
           </div>
@@ -637,7 +683,7 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid }) {
 }
 
 /* INVOICES */
-function Invoices({ members }) {
+function Invoices({ members, filterMember, onClearFilter }) {
   const [filt,setFilt]=useState("toutes");
   const [invoices,setInvoices]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -694,7 +740,7 @@ function Invoices({ members }) {
 
   React.useEffect(()=>{loadInvoices();},[]);
 
-  const list=invoices.filter(i=>filt==="toutes"||i.statut===filt);
+  const list=invoices.filter(i=>(filt==="toutes"||i.statut===filt)&&(!filterMember||!filterMember.trim()||(i.nom_membre||"").toLowerCase().includes(filterMember.toLowerCase())));
   const paid=invoices.filter(i=>i.statut==="payée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
   const pending=invoices.filter(i=>i.statut==="en attente").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
   const unpaid=invoices.filter(i=>i.statut==="impayée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
@@ -719,7 +765,13 @@ function Invoices({ members }) {
       </div>
       <div className="card">
         <div className="card-hd">
-          <div className="card-title">Factures {new Date().getFullYear()}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <div className="card-title">Factures {new Date().getFullYear()}</div>
+            {filterMember&&filterMember.trim()&&<span style={{display:"inline-flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#5b21b6",borderRadius:20,padding:"3px 12px",fontSize:"0.8rem",fontWeight:600}}>
+              <Icon name="user" size={12} color="#5b21b6"/> {filterMember}
+              <span onClick={onClearFilter} style={{cursor:"pointer",marginLeft:2,fontWeight:700,fontSize:"0.9rem"}}>&times;</span>
+            </span>}
+          </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             {["toutes","payée","en attente","impayée"].map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}
             <button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>
@@ -1431,6 +1483,7 @@ function App() {
   const [showAddModal,setShowAddModal]=useState(false);
   const [editMember,setEditMember]=useState(null);
   const [deleteMember,setDeleteMember]=useState(null);
+  const [filterMember,setFilterMember]=useState("");
 
   if (!in_) return <Login onLogin={()=>{setIn(true);loadMembers();}} />;
   function go(p){setPage(p);setSel(null);}
@@ -1626,7 +1679,7 @@ function App() {
       case "dashboard": return <Dashboard members={members} set={go} />;
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices members={members} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} />;
       case "email":       return <EmailPage members={members} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
@@ -1641,7 +1694,7 @@ function App() {
         <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
       </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} />}
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
       {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
       {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
       {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
