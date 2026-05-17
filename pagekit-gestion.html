@@ -830,51 +830,6 @@ function InvoiceGenerator({ members }) {
   function downloadPDF(){
     generateBeautifulPDF(prenom, nom, email, montant, objet, date, num);
   }
-    // Background
-    doc.setFillColor(248,247,255); doc.rect(0,0,210,297,"F");
-    // Left accent bar
-    doc.setFillColor(99,102,241); doc.rect(0,0,8,297,"F");
-    // Header block
-    doc.setFillColor(99,102,241); doc.roundedRect(14,14,182,50,4,4,"F");
-    // Header circles decoration
-    doc.setDrawColor(255,255,255); doc.setLineWidth(0.3);
-    doc.circle(175,20,25,"S"); doc.circle(165,45,15,"S");
-    // Association name
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(20); doc.setFont("helvetica","bold");
-    doc.text("Ch'tis en Maine",22,32);
-    doc.setFontSize(9); doc.setFont("helvetica","normal");
-    doc.setTextColor(200,200,255);
-    doc.text("Association loi 1901 - Sarthe, Pays de la Loire",22,40);
-    doc.text("contact@chtis-en-maine.fr",22,48);
-    // FACTURE title
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(26); doc.setFont("helvetica","bold");
-    doc.text("FACTURE",192,34,{align:"right"});
-    doc.setFontSize(9); doc.setFont("helvetica","normal");
-    doc.setTextColor(200,200,255);
-    doc.text("N° "+num,192,43,{align:"right"});
-    doc.text("Date : "+dateStr,192,51,{align:"right"});
-    // Info card: Facture a
-    doc.setFillColor(255,255,255); doc.roundedRect(14,74,88,42,3,3,"F");
-    doc.setDrawColor(220,215,255); doc.setLineWidth(0.5); doc.roundedRect(14,74,88,42,3,3,"S");
-    doc.setFillColor(99,102,241); doc.roundedRect(14,74,88,6,3,3,"F"); doc.rect(14,77,88,3,"F");
-    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
-    doc.text("FACTURE A",22,79);
-    doc.setTextColor(30,30,50); doc.setFontSize(12); doc.setFont("helvetica","bold");
-    doc.text(prenom+" "+nom,22,91);
-    doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,130);
-    if(email) doc.text(email,22,99);
-    // Info card: Emis par
-    doc.setFillColor(255,255,255); doc.roundedRect(108,74,88,42,3,3,"F");
-    doc.roundedRect(108,74,88,42,3,3,"S");
-    doc.setFillColor(139,92,246); doc.roundedRect(108,74,88,6,3,3,"F"); doc.rect(108,77,88,3,"F");
-    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
-    doc.text("EMIS PAR",116,79);
-    doc.setTextColor(30,30,50); doc.setFontSize(12); doc.setFont("helvetica","bold");
-    doc.text("Ch'tis en Maine",116,91);
-    doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,130);
-  }
 
   return (
     <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"start"}}>
