@@ -593,16 +593,12 @@ function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
 }
 
 /* DRAWER */
-function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onSMS, onViewInvoices }) {
+function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoices }) {
   if (!m) return null;
   const [showEmail, setShowEmail] = useState(false);
-  const [showSMS,   setShowSMS]   = useState(false);
   const [emailType, setEmailType] = useState("bienvenue");
-  const [smsType,   setSmsType]   = useState("bienvenue");
   const [sending, setSending] = useState(false);
-  const [smsSending, setSmsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [smsSent,   setSmsSent]   = useState(false);
 
   async function doSendEmail(){
     if(!m.email||!m.email.includes("@")){ alert("Ce membre n'a pas d'adresse e-mail valide."); return; }
@@ -613,24 +609,6 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onSMS, onView
     setShowEmail(false);
     setTimeout(()=>setEmailSent(false), 3000);
   }
-
-  async function doSendSMS(){
-    if(!m.tel||m.tel==="—"||m.tel===""){ alert("Ce membre n'a pas de numéro de téléphone."); return; }
-    setSmsSending(true);
-    await onSMS(smsType);
-    setSmsSending(false);
-    setSmsSent(true);
-    setShowSMS(false);
-    setTimeout(()=>setSmsSent(false), 3000);
-  }
-
-  const MSG_TYPES = [
-    {v:"bienvenue",  l:"Message de bienvenue"},
-    {v:"en attente", l:"Rappel cotisation en attente"},
-    {v:"impayée",    l:"Relance cotisation impayée"},
-    {v:"paiement",   l:"Confirmation de paiement"},
-    {v:"evenement",  l:"Annonce événement"},
-  ];
 
   const EMAIL_TYPES = [
     {v:"bienvenue",    l:"Message de bienvenue"},
@@ -685,34 +663,12 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onSMS, onView
           )}
 
           {emailSent&&<div style={{background:"#ECFDF5",color:"#065F46",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ E-mail envoyé à {m.email}</div>}
-          {smsSent&&<div style={{background:"#EFF6FF",color:"#1e3a8a",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ SMS envoyé au {m.tel}</div>}
-
-          {showSMS&&(
-            <div style={{background:"#EFF6FF",border:"1.5px solid #bfdbfe",borderRadius:12,padding:"14px 16px",marginBottom:14}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#2563eb",textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Type de SMS</div>
-              {MSG_TYPES.map(t=>(
-                <label key={t.v} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",cursor:"pointer",fontSize:13,color:smsType===t.v?"#2563eb":"var(--t2)",fontWeight:smsType===t.v?700:400,borderBottom:"1px solid #dbeafe"}}>
-                  <input type="radio" name="smsType" value={t.v} checked={smsType===t.v} onChange={()=>setSmsType(t.v)} style={{accentColor:"#2563eb"}}/>
-                  {t.l}
-                </label>
-              ))}
-              <div style={{display:"flex",gap:8,marginTop:12}}>
-                <button onClick={()=>setShowSMS(false)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid #bfdbfe",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
-                <button onClick={doSendSMS} disabled={smsSending} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:smsSending?.6:1}}>
-                  {smsSending?"Envoi…":"📱 Envoyer SMS"}
-                </button>
-              </div>
-            </div>
-          )}
 
           <div>
             <div className="dr-st">Actions</div>
             <div className="act-list">
-              <button className="ab ab-p" onClick={()=>{setShowEmail(v=>!v);setShowSMS(false);}}>
+              <button className="ab ab-p" onClick={()=>setShowEmail(v=>!v)}>
                 <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer messagerie":"Envoyer un e-mail"}
-              </button>
-              <button className="ab ab-s" style={{background:"#EFF6FF",color:"#1e40af",border:"1.5px solid #bfdbfe"}} onClick={()=>{setShowSMS(v=>!v);setShowEmail(false);}}>
-                📱 {showSMS?"Fermer SMS":"Envoyer un SMS"}
               </button>
               <button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
               {m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
@@ -727,26 +683,21 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onSMS, onView
 }
 
 /* INVOICES */
-function Invoices({ members, filterMember, onClearFilter, onEmail, onSMS }) {
+function Invoices({ members, filterMember, onClearFilter, onEmail }) {
   const [filt,setFilt]=useState("toutes");
   const [invoices,setInvoices]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showAdd,setShowAdd]=useState(false);
   const [addForm,setAddForm]=useState({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
   const [emailRow,setEmailRow]=useState(null);
-  const [smsRow,setSmsRow]=useState(null);
   const [emailType,setEmailType]=useState("en attente");
-  const [smsType,setSmsType]=useState("en attente");
   const [sending,setSending]=useState(false);
-  const [smsSending,setSmsSending]=useState(false);
   const [emailSent,setEmailSent]=useState(null);
-  const [smsSent,setSmsSent]=useState(null);
   const MSG_TYPES=[
     {v:"bienvenue",l:"Bienvenue"},
     {v:"en attente",l:"Rappel cotisation"},
     {v:"impayée",l:"Relance impayée"},
     {v:"paiement",l:"Confirmation paiement"},
-    {v:"evenement",l:"Annonce événement"},
   ];
   async function doSendFromRow(inv){
     const fullName=inv.nom_membre||"";
@@ -758,17 +709,6 @@ function Invoices({ members, filterMember, onClearFilter, onEmail, onSMS }) {
     setEmailSent(inv.id);
     setEmailRow(null);
     setTimeout(()=>setEmailSent(null),3000);
-  }
-  async function doSendSMSFromRow(inv){
-    const fullName=inv.nom_membre||"";
-    const member=members.find(m=>`${m.prenom} ${m.nom}`.toLowerCase()===fullName.toLowerCase());
-    if(!member||!member.tel){alert("Numéro de téléphone introuvable pour ce membre.");return;}
-    setSmsSending(true);
-    await onSMS(member.tel,member.prenom,member.nom,smsType);
-    setSmsSending(false);
-    setSmsSent(inv.id);
-    setSmsRow(null);
-    setTimeout(()=>setSmsSent(null),3000);
   }
 
   async function loadInvoices(){
@@ -876,11 +816,8 @@ function Invoices({ members, filterMember, onClearFilter, onEmail, onSMS }) {
                       const parts=(inv.nom_membre||"").split(" ");
                       generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null,inv.statut);
                     }}>📄 PDF</button>
-                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setSmsRow(null);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
-                      {emailSent===inv.id?"✅ Email":"✉️ Mail"}
-                    </button>
-                    <button className="pdf-btn" style={{color:"#1d4ed8",borderColor:"#93c5fd",background:"#dbeafe"}} onClick={()=>{setSmsRow(smsRow===inv.id?null:inv.id);setEmailRow(null);setSmsType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
-                      {smsSent===inv.id?"✅ SMS":"📱 SMS"}
+                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
+                      {emailSent===inv.id?"✅ Envoyé":"✉️ Mail"}
                     </button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
@@ -896,19 +833,6 @@ function Invoices({ members, filterMember, onClearFilter, onEmail, onSMS }) {
                       <button onClick={()=>setEmailRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
                     </div>
                   )}
-                  {smsRow===inv.id&&(
-                    <div style={{marginTop:8,padding:"10px 12px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:12,fontWeight:700,color:"#1e40af"}}>📱 SMS :</span>
-                      <select value={smsType} onChange={e=>setSmsType(e.target.value)} style={{border:"1px solid #bfdbfe",borderRadius:7,padding:"5px 8px",fontSize:13,background:"white",color:"#1e40af",fontWeight:600,outline:"none"}}>
-                        {MSG_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
-                      </select>
-                      <button onClick={()=>doSendSMSFromRow(inv)} disabled={smsSending} style={{padding:"5px 14px",background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",color:"white",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer",opacity:smsSending?.6:1}}>
-                        {smsSending?"...":"Envoyer"}
-                      </button>
-                      <button onClick={()=>setSmsRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
-                    </div>
-                  )}
-                  {smsSent===inv.id&&<div style={{marginTop:6,fontSize:12,color:"#1d4ed8",fontWeight:600}}>✅ SMS envoyé</div>}
                   {emailSent===inv.id&&<div style={{marginTop:6,fontSize:12,color:"#059669",fontWeight:600}}>✅ E-mail envoyé</div>}
                 </td>
               </tr>
@@ -1016,36 +940,218 @@ function EmailPage({ members }) {
 }
 
 /* DOCUMENTS */
+const DOC_LS="chtis_docs";
+const DOC_CATS=["Tous","Réunions","Juridique","Formulaires","Finances","Rapports","Autre"];
+const DOC_STATIC=[
+  {id:"s1",name:"Compte-rendu AG 2026.pdf",cat:"Réunions",date:"2026-04-28",size:1258291,data:null},
+  {id:"s2",name:"Statuts de l'association.pdf",cat:"Juridique",date:"2026-04-20",size:865280,data:null},
+  {id:"s3",name:"Formulaire d'adhésion.docx",cat:"Formulaires",date:"2026-04-15",size:327680,data:null},
+  {id:"s4",name:"Budget prévisionnel 2026.xlsx",cat:"Finances",date:"2026-04-10",size:240640,data:null},
+  {id:"s5",name:"Rapport d'activité 2025.pdf",cat:"Rapports",date:"2026-04-05",size:1887437,data:null},
+  {id:"s6",name:"Règlement intérieur.pdf",cat:"Juridique",date:"2026-01-01",size:421888,data:null},
+];
+
+function fmtSize(b){if(!b)return"—";if(b<1024)return b+" o";if(b<1048576)return(b/1024).toFixed(0)+" Ko";return(b/1048576).toFixed(1)+" Mo";}
+function fmtDate(d){try{return new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});}catch{return d;}}
+function docExt(name){return(name||"").split(".").pop().toLowerCase();}
+function docColor(name){
+  const e=docExt(name);
+  if(["pdf"].includes(e)) return{bg:"#FFF5F5",ico:"#C53030",label:"PDF"};
+  if(["doc","docx"].includes(e)) return{bg:"#EBF8FF",ico:"#2B6CB0",label:"DOC"};
+  if(["xls","xlsx"].includes(e)) return{bg:"#F0FFF4",ico:"#276749",label:"XLS"};
+  if(["ppt","pptx"].includes(e)) return{bg:"#FFFAF0",ico:"#C05621",label:"PPT"};
+  if(["jpg","jpeg","png","gif","webp"].includes(e)) return{bg:"#FAF5FF",ico:"#7C3AED",label:"IMG"};
+  return{bg:"#F7FAFC",ico:"#4A5568",label:e.toUpperCase()||"FIC"};
+}
+
 function DocsPage() {
-  const DOCS=[
-    {name:"Compte-rendu AG 2026.pdf",cat:"Réunions",date:"28/04/2026",size:"1.2 MB",bg:"#FFF5F5",ico:"#C53030"},
-    {name:"Statuts de l'association.pdf",cat:"Juridique",date:"20/04/2026",size:"845 KB",bg:"#EBF8FF",ico:"#2B6CB0"},
-    {name:"Formulaire d'adhésion.docx",cat:"Formulaires",date:"15/04/2026",size:"320 KB",bg:"#FFFAF0",ico:"#C05621"},
-    {name:"Budget prévisionnel 2026.xlsx",cat:"Finances",date:"10/04/2026",size:"235 KB",bg:"#F0FFF4",ico:"#276749"},
-    {name:"Rapport d'activité 2025.pdf",cat:"Rapports",date:"05/04/2026",size:"1.8 MB",bg:"#FFF5F5",ico:"#C53030"},
-    {name:"Règlement intérieur.pdf",cat:"Juridique",date:"01/01/2026",size:"412 KB",bg:"#EBF8FF",ico:"#2B6CB0"},
-  ];
+  const [docs,setDocs]=useState([]);
+  const [cat,setCat]=useState("Tous");
+  const [search,setSearch]=useState("");
+  const [sort,setSort]=useState("date");
+  const [uploading,setUploading]=useState(false);
+  const [dragOver,setDragOver]=useState(false);
+  const [deleteId,setDeleteId]=useState(null);
+  const [catForm,setCatForm]=useState("Autre");
+  const [pendingFile,setPendingFile]=useState(null);
+  const fileRef=React.useRef();
+
+  function loadDocs(){
+    try{
+      const stored=localStorage.getItem(DOC_LS);
+      if(stored){setDocs(JSON.parse(stored));return;}
+    }catch(e){}
+    setDocs(DOC_STATIC);
+    localStorage.setItem(DOC_LS,JSON.stringify(DOC_STATIC));
+  }
+  function saveDocs(list){setDocs(list);localStorage.setItem(DOC_LS,JSON.stringify(list));}
+
+  React.useEffect(()=>{loadDocs();},[]);
+
+  function readFile(file,chosenCat){
+    if(file.size>8*1024*1024){alert("Fichier trop volumineux (max 8 Mo).");return;}
+    setUploading(true);
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const newDoc={
+        id:"d"+Date.now(),
+        name:file.name,
+        cat:chosenCat||"Autre",
+        date:new Date().toISOString().split("T")[0],
+        size:file.size,
+        data:e.target.result,
+        type:file.type
+      };
+      const updated=[newDoc,...docs];
+      saveDocs(updated);
+      setUploading(false);
+      setPendingFile(null);
+    };
+    reader.onerror=()=>{alert("Erreur lors de la lecture du fichier.");setUploading(false);};
+    reader.readAsDataURL(file);
+  }
+
+  function onFileChange(e){
+    const file=e.target.files[0];
+    if(file){setPendingFile(file);setCatForm("Autre");}
+    e.target.value="";
+  }
+
+  function onDrop(e){
+    e.preventDefault();setDragOver(false);
+    const file=e.dataTransfer.files[0];
+    if(file){setPendingFile(file);setCatForm("Autre");}
+  }
+
+  function confirmUpload(){readFile(pendingFile,catForm);}
+
+  function download(doc){
+    if(!doc.data){alert("Ce document d'exemple n'a pas de fichier réel associé.");return;}
+    const a=document.createElement("a");
+    a.href=doc.data;
+    a.download=doc.name;
+    a.click();
+  }
+
+  function deleteDoc(){
+    const updated=docs.filter(d=>d.id!==deleteId);
+    saveDocs(updated);
+    setDeleteId(null);
+  }
+
+  const filtered=docs
+    .filter(d=>(cat==="Tous"||d.cat===cat)&&(!search||(d.name||"").toLowerCase().includes(search.toLowerCase())))
+    .sort((a,b)=>{
+      if(sort==="name") return a.name.localeCompare(b.name);
+      if(sort==="size") return (b.size||0)-(a.size||0);
+      return new Date(b.date)-new Date(a.date);
+    });
+
   return (
-    <div className="card">
-      <div className="card-hd">
-        <div className="card-title">Documents</div>
-        <button className="add-btn"><Icon name="plus" size={14} color="white" /> Ajouter un document</button>
+    <div>
+      {/* Upload zone */}
+      <div
+        onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+        onDragLeave={()=>setDragOver(false)}
+        onDrop={onDrop}
+        onClick={()=>fileRef.current.click()}
+        style={{border:`2px dashed ${dragOver?"#667eea":"#d1d5db"}`,borderRadius:16,padding:"28px 20px",textAlign:"center",cursor:"pointer",marginBottom:20,background:dragOver?"#f5f3ff":"#fafbff",transition:"all .2s"}}>
+        <input ref={fileRef} type="file" style={{display:"none"}} onChange={onFileChange}
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv,.zip"/>
+        <div style={{fontSize:32,marginBottom:8}}>{uploading?"⏳":"📁"}</div>
+        <div style={{fontWeight:700,color:"var(--t1)",fontSize:14,marginBottom:4}}>
+          {uploading?"Traitement en cours…":"Glissez un fichier ici ou cliquez pour sélectionner"}
+        </div>
+        <div style={{fontSize:12,color:"var(--t4)"}}>PDF, Word, Excel, PowerPoint, Images — max 8 Mo</div>
       </div>
-      <div className="docs-grid">
-        {DOCS.map(d=>(
-          <div key={d.name} className="doc-full">
-            <div style={{width:42,height:42,borderRadius:11,background:d.bg,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}>
-              <Icon name="doc" size={20} color={d.ico} />
-            </div>
-            <div style={{fontWeight:700,fontSize:13.5,color:"var(--t1)",marginBottom:2}}>{d.name}</div>
-            <div style={{fontSize:12,color:"var(--t4)",marginBottom:8}}>{d.cat} · {d.date} · {d.size}</div>
-            <div style={{display:"flex",gap:6}}>
-              <button className="pdf-btn">⬇ Télécharger</button>
-              <button className="pdf-btn"><Icon name="trash" size={12} color="#718096" /></button>
+
+      {/* Modal catégorie */}
+      {pendingFile&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setPendingFile(null)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:400,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center"}}>
+            <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:16}}>Choisir une catégorie</div>
+            <div style={{padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:13,color:"#059669",fontWeight:600,marginBottom:16}}>📄 {pendingFile.name} ({fmtSize(pendingFile.size)})</div>
+            <div className="clabel">Catégorie</div>
+            <select className="csel" value={catForm} onChange={e=>setCatForm(e.target.value)} style={{marginBottom:20}}>
+              {DOC_CATS.filter(c=>c!=="Tous").map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setPendingFile(null)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid #e5e7eb",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
+              <button onClick={confirmUpload} style={{flex:2,padding:"9px",background:"var(--indigo-grad)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"white"}}>⬆ Importer</button>
             </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Filtres */}
+      <div className="card" style={{marginBottom:20,padding:"14px 18px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <div style={{position:"relative",flex:1,minWidth:180}}>
+            <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="search" size={15} color="#9ca3af"/></span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un document…" style={{width:"100%",padding:"8px 10px 8px 33px",border:"1px solid #e5e7eb",borderRadius:9,fontSize:13,outline:"none",background:"#f9fafb"}}/>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {DOC_CATS.map(c=>(
+              <button key={c} onClick={()=>setCat(c)} className={`fp ${cat===c?"active":""}`}>{c}</button>
+            ))}
+          </div>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{border:"1px solid #e5e7eb",borderRadius:9,padding:"7px 10px",fontSize:13,background:"white",color:"var(--t2)",outline:"none",fontWeight:600}}>
+            <option value="date">Date ↓</option>
+            <option value="name">Nom A→Z</option>
+            <option value="size">Taille ↓</option>
+          </select>
+          <div style={{color:"var(--t4)",fontSize:13,whiteSpace:"nowrap"}}>{filtered.length} fichier{filtered.length!==1?"s":""}</div>
+        </div>
       </div>
+
+      {/* Grille */}
+      {filtered.length===0?(
+        <div className="card" style={{padding:"60px 24px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📭</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:6}}>{search||cat!=="Tous"?"Aucun résultat":"Aucun document"}</div>
+          <div style={{fontSize:13,color:"var(--t4)"}}>Importez votre premier document en glissant un fichier ci-dessus.</div>
+        </div>
+      ):(
+        <div className="docs-grid">
+          {filtered.map(d=>{
+            const {bg,ico,label}=docColor(d.name);
+            return (
+              <div key={d.id} className="doc-full">
+                <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:10}}>
+                  <div style={{width:46,height:46,borderRadius:12,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,border:`1px solid ${ico}22`}}>
+                    <Icon name="doc" size={18} color={ico}/>
+                    <span style={{fontSize:9,fontWeight:800,color:ico,marginTop:2,letterSpacing:.5}}>{label}</span>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"var(--t1)",lineHeight:1.3,wordBreak:"break-word"}}>{d.name}</div>
+                    <div style={{fontSize:11.5,color:"var(--t4)",marginTop:3}}>{fmtDate(d.date)} · {fmtSize(d.size)}</div>
+                    <span style={{display:"inline-block",marginTop:5,padding:"2px 10px",borderRadius:20,background:bg,color:ico,fontSize:11,fontWeight:700,border:`1px solid ${ico}33`}}>{d.cat}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="pdf-btn" style={{flex:1,justifyContent:"center",color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>download(d)}>⬇ Télécharger</button>
+                  <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>setDeleteId(d.id)}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Confirmation suppression */}
+      {deleteId&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDeleteId(null)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:360,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⚠️</div>
+            <div style={{fontWeight:800,fontSize:16,color:"var(--t1)",marginBottom:8}}>Supprimer ce document ?</div>
+            <div style={{color:"var(--t3)",fontSize:13,marginBottom:22}}>Cette action est irréversible.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={()=>setDeleteId(null)} style={{padding:"9px 22px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+              <button onClick={deleteDoc} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14}}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1830,9 +1936,6 @@ function App() {
   const EJS_TEMPLATE="template_q1ykzn9";
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
-  // ── Brevo SMS config ──
-  const BREVO_KEY="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";
-
   async function sendEmail(to, prenom, nom, role, type){
     if(!to || !to.includes("@")) return;
     let subject, titre, message, header_color;
@@ -1880,35 +1983,6 @@ function App() {
       });
       console.log("✅ Email envoyé:",type,"→",to);
     }catch(e){console.error("EmailJS error:",e);}
-  }
-
-  function normalizeTel(tel){
-    let t=(tel||"").replace(/[\s.\-()+]/g,"");
-    if(t.startsWith("00")) t="+"+t.slice(2);
-    else if(t.startsWith("0")&&t.length===9) t="+33"+t.slice(1);
-    else if(!t.startsWith("+")) t="+33"+t;
-    return "+"+t.replace(/\D/g,"");
-  }
-
-  async function sendSMS(tel, prenom, nom, type){
-    const num=normalizeTel(tel);
-    if(!num||num.length<10){ alert("Numéro de téléphone invalide pour ce membre."); return; }
-    let content="";
-    if(type==="bienvenue") content=`Bonjour ${prenom}, bienvenue dans Ch'tis en Maine ! Nous sommes ravis de vous accueillir parmi nous.`;
-    else if(type==="en attente") content=`Bonjour ${prenom}, nous vous rappelons que votre cotisation Ch'tis en Maine est en attente. Merci de la régler dès que possible.`;
-    else if(type==="impayée") content=`Bonjour ${prenom}, votre cotisation Ch'tis en Maine est impayée. Merci de régulariser votre situation rapidement.`;
-    else if(type==="paiement") content=`Bonjour ${prenom}, nous avons bien reçu votre cotisation. Merci ! - Ch'tis en Maine`;
-    else if(type==="evenement") content=`Bonjour ${prenom}, un événement Ch'tis en Maine est organisé prochainement. Restez à l'écoute !`;
-    else content=`Bonjour ${prenom}, un message de l'association Ch'tis en Maine.`;
-    try{
-      const r=await fetch("https://api.brevo.com/v3/transactionalSMS/sms",{
-        method:"POST",
-        headers:{"api-key":BREVO_KEY,"Content-Type":"application/json"},
-        body:JSON.stringify({sender:"ChTisMaine",recipient:num,content})
-      });
-      if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}
-      console.log("✅ SMS envoyé:",type,"→",num);
-    }catch(e){console.error("Brevo SMS error:",e);alert("Erreur envoi SMS : "+e.message);}
   }
 
   async function handleAddMember(form){
@@ -1995,7 +2069,7 @@ function App() {
       case "dashboard": return <Dashboard members={members} set={go} />;
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} onSMS={sendSMS} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} />;
       case "email":       return <EmailPage members={members} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
@@ -2011,7 +2085,7 @@ function App() {
         <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
       </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onSMS={(type)=>sendSMS(sel.tel,sel.prenom,sel.nom,type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
       {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
       {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
       {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
