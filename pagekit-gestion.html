@@ -305,224 +305,256 @@ function Topbar({ breadcrumb, title, action }) {
 
 /* DASHBOARD */
 function Dashboard({ members, set }) {
-  const actifs = members.filter(m=>m.statut==="actif").length;
-  const recent = [...members].sort((a,b)=>new Date(b.joined)-new Date(a.joined)).slice(0,4);
+  // ── Real data from localStorage ──
+  const docs   = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_docs")||"[]"),[]);
+  const events = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_events")||"[]"),[]);
+  const msgs   = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_messages")||"[]"),[]);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const actifs    = members.filter(m=>m.statut==="actif").length;
+  const inactifs  = members.filter(m=>m.statut==="inactif").length;
+  const payes     = members.filter(m=>m.cotisation==="payée").length;
+  const attente   = members.filter(m=>m.cotisation==="en attente").length;
+  const impayes   = members.filter(m=>m.cotisation==="impayée").length;
+  const upcomingEvts = events.filter(e=>new Date(e.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const recentMembers = [...members].sort((a,b)=>new Date(b.joined)-new Date(a.joined)).slice(0,5);
+  const recentMsgs = msgs.slice(0,4);
+  const recentDocs = docs.slice(0,4);
 
   const STATS = [
-    {label:"Membres actifs", val:actifs,    trend:"↑ +4 ce mois",  bg:"linear-gradient(127deg,#667eea,#764ba2)"},
-    {label:"Documents",      val:28,        trend:"↑ +3 ce mois",  bg:"linear-gradient(127deg,#4FD1C5,#2C7A7B)"},
-    {label:"Factures",       val:INVOICES.length, trend:"↑ +2 ce mois", bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
-    {label:"Actualités",     val:6,         trend:"↑ +1 ce mois",  bg:"linear-gradient(127deg,#f953c6,#b91d73)"},
+    {label:"Membres actifs",    val:actifs,         icon:"user",     bg:"linear-gradient(127deg,#667eea,#764ba2)", sub:`${inactifs} inactif${inactifs>1?"s":""}`, page:"members"},
+    {label:"Documents",         val:docs.length,    icon:"doc",      bg:"linear-gradient(127deg,#4FD1C5,#2C7A7B)", sub:`${recentDocs.length} récents`, page:"documents"},
+    {label:"Événements à venir",val:upcomingEvts.length, icon:"calendar", bg:"linear-gradient(127deg,#f7971e,#ffd200)", sub:"planifiés", page:"events"},
+    {label:"Messages envoyés",  val:msgs.length,    icon:"mail",     bg:"linear-gradient(127deg,#f953c6,#b91d73)", sub:"depuis le site", page:"messages"},
   ];
 
-  const NEWS = [
-    {title:"Assemblée générale 2026",        body:"L'assemblée générale aura lieu le 12 mai à 18h.",               date:"28/04"},
-    {title:"Nouveau document disponible",    body:"Le compte-rendu de la réunion est maintenant disponible.",      date:"27/04"},
-    {title:"Sortie annuelle - inscriptions", body:"Inscriptions ouvertes pour la sortie annuelle en Normandie.",   date:"26/04"},
+  // Cotisation bar percentages
+  const total = members.length || 1;
+  const pctP = Math.round(payes/total*100);
+  const pctA = Math.round(attente/total*100);
+  const pctI = Math.round(impayes/total*100);
+
+  const SOURCE_COLORS = {membre:"#2563eb",broadcast:"#7c3aed","événement":"#0891b2",facture:"#d97706"};
+  const SOURCE_LABELS = {membre:"Membre",broadcast:"Actualités","événement":"Événement",facture:"Facture"};
+
+  const QUICK = [
+    {icon:"user",    label:"Membres",     page:"members",    bg:"#eff6ff", color:"#2563eb"},
+    {icon:"calendar",label:"Événements",  page:"events",     bg:"#ecfeff", color:"#0891b2"},
+    {icon:"mail",    label:"Actualités",  page:"email",      bg:"#f5f3ff", color:"#7c3aed"},
+    {icon:"doc",     label:"Documents",   page:"documents",  bg:"#f0fdf4", color:"#059669"},
+    {icon:"invoice", label:"Factures",    page:"invoices",   bg:"#fffbeb", color:"#d97706"},
+    {icon:"chat",    label:"Messages",    page:"messages",   bg:"#fdf2f8", color:"#be185d"},
   ];
 
-  const DOCS = [
-    {name:"Compte-rendu AG 2026.pdf", size:"1.2 MB", bg:"#FFF5F5", ico:"#C53030"},
-    {name:"Statuts association.pdf",  size:"845 KB", bg:"#EBF8FF", ico:"#2B6CB0"},
-    {name:"Budget 2026.xlsx",         size:"235 KB", bg:"#F0FFF4", ico:"#276749"},
-    {name:"Formulaire adhésion.docx", size:"320 KB", bg:"#FFFAF0", ico:"#C05621"},
-  ];
+  function relDay(iso){
+    const d=new Date(iso); d.setHours(0,0,0,0);
+    const diff=Math.round((d-today)/86400000);
+    if(diff===0) return "Aujourd'hui";
+    if(diff===1) return "Demain";
+    if(diff<7)   return `Dans ${diff}j`;
+    return new Date(iso).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  }
 
-  const [subj,setSubj]=useState(""); const [msg,setMsg]=useState(""); const [dest,setDest]=useState("all");
-  const [sent,setSent]=useState(false); const [sending,setSending]=useState(false);
-  function doSend(){if(!subj||!msg)return;setSending(true);setTimeout(()=>{setSending(false);setSent(true);setSubj("");setMsg("");setTimeout(()=>setSent(false),3000)},1400)}
-
-  const [igNom,setIgNom]=useState(""); const [igPre,setIgPre]=useState("");
-  const [igMt,setIgMt]=useState("25"); const [igObj,setIgObj]=useState("Cotisation annuelle 2024");
-  const [igDate,setIgDate]=useState(new Date().toISOString().split("T")[0]); const [igGen,setIgGen]=useState(false);
+  function docExt(name){ const p=name.lastIndexOf("."); return p>-1?name.slice(p+1).toUpperCase():"?"; }
+  const EXT_COLORS={PDF:{bg:"#fff1f2",color:"#be123c"},DOCX:{bg:"#eff6ff",color:"#1d4ed8"},XLSX:{bg:"#f0fdf4",color:"#166534"},PNG:{bg:"#fdf4ff",color:"#7e22ce"},JPG:{bg:"#fdf4ff",color:"#7e22ce"}};
 
   return (
     <div>
-      
+      {/* ── Stat cards ── */}
       <div className="stat-row">
-        {STATS.map(s => (
-          <div key={s.label} className="sc" style={{background:s.bg}}>
-            <div className="sc-overlay" /><div className="sc-pattern" /><div className="sc-pattern2" />
+        {STATS.map(s=>(
+          <div key={s.label} className="sc" style={{background:s.bg,cursor:"pointer"}} onClick={()=>set(s.page)}>
+            <div className="sc-overlay"/><div className="sc-pattern"/><div className="sc-pattern2"/>
             <div className="sc-label">{s.label}</div>
             <div className="sc-val">{s.val}</div>
-            <div className="sc-trend">{s.trend}</div>
+            <div className="sc-trend">{s.sub}</div>
           </div>
         ))}
       </div>
 
-      
-      <div className="row">
+      {/* ── Row 1 : recent members + upcoming events + cotisation status ── */}
+      <div className="row" style={{alignItems:"start"}}>
+
+        {/* Derniers membres */}
         <div className="col">
-          <div className="card mb18">
+          <div className="card">
             <div className="card-hd">
-              <div><div className="card-title">Derniers membres inscrits</div></div>
+              <div className="card-title">Derniers inscrits</div>
               <span className="card-link" onClick={()=>set("members")}>Voir tous →</span>
             </div>
-            {recent.map(m=>(
-              <div key={m.id} className="ri">
-                <div className="mav" style={{background:avGrad(m.id)}}>{ini(m)}</div>
-                <div className="ri-main">
-                  <div className="ri-name">{m.prenom} {m.nom}</div>
-                  <div className="ri-sub">{m.email}</div>
+            {recentMembers.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>Aucun membre</div>
+              : recentMembers.map(m=>(
+                <div key={m.id} className="ri">
+                  <div className="mav" style={{background:avGrad(m.id)}}>{ini(m)}</div>
+                  <div className="ri-main">
+                    <div className="ri-name">{m.prenom} {m.nom}</div>
+                    <div className="ri-sub">{m.role||"Membre"}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    <div className="ri-date">{fmtDate(m.joined)}</div>
+                    <MBadge s={m.statut}/>
+                  </div>
                 </div>
-                <div className="ri-date">{fmtDate(m.joined)}</div>
-              </div>
-            ))}
+              ))
+            }
           </div>
         </div>
 
+        {/* Prochains événements */}
         <div className="col">
-          <div className="card mb18">
+          <div className="card">
             <div className="card-hd">
-              <div><div className="card-title">Dernières actualités</div></div>
-              <span className="card-link">Voir toutes →</span>
+              <div className="card-title">Prochains événements</div>
+              <span className="card-link" onClick={()=>set("events")}>Voir tous →</span>
             </div>
-            {NEWS.map((n,i)=>(
-              <div key={i} className="ri">
-                <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <Icon name="mail" size={15} color="white" />
+            {upcomingEvts.length===0
+              ? <div style={{textAlign:"center",padding:"28px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📅</div>
+                  Aucun événement à venir
+                  <div style={{marginTop:12}}><span className="card-link" style={{fontSize:13}} onClick={()=>set("events")}>Créer un événement →</span></div>
                 </div>
-                <div className="ri-main">
-                  <div className="ri-name">{n.title}</div>
-                  <div className="ri-sub">{n.body}</div>
-                </div>
-                <div className="ri-date">{n.date}</div>
-              </div>
-            ))}
+              : upcomingEvts.slice(0,4).map(e=>{
+                  const ec=e.color||"#667eea";
+                  return (
+                    <div key={e.id} className="ri" style={{alignItems:"center"}}>
+                      <div style={{width:42,minWidth:42,height:42,borderRadius:10,background:ec,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0}}>
+                        <div style={{fontSize:14,fontWeight:800,lineHeight:1}}>{new Date(e.date).getDate()}</div>
+                        <div style={{fontSize:9,fontWeight:600,opacity:.85,textTransform:"uppercase"}}>{new Date(e.date).toLocaleDateString("fr-FR",{month:"short"})}</div>
+                      </div>
+                      <div className="ri-main">
+                        <div className="ri-name">{e.titre}</div>
+                        <div className="ri-sub">{e.lieu||"Lieu non défini"} · {e.participants?.length||0} participant{(e.participants?.length||0)>1?"s":""}</div>
+                      </div>
+                      <div style={{fontSize:11,fontWeight:700,color:ec,background:ec+"18",padding:"3px 8px",borderRadius:20,whiteSpace:"nowrap"}}>{relDay(e.date)}</div>
+                    </div>
+                  );
+                })
+            }
           </div>
         </div>
 
+        {/* Cotisations */}
         <div className="col-right">
           <div className="card">
             <div className="card-hd">
-              <div className="card-title">Liste des membres</div>
-              <span className="card-link" onClick={()=>set("members")}>Voir tous</span>
+              <div className="card-title">Cotisations</div>
+              <span className="card-link" onClick={()=>set("invoices")}>Factures →</span>
             </div>
-            {members.slice(0,5).map(m=>(
-              <div key={m.id} className="ml-i">
-                <div className="mav" style={{background:avGrad(m.id),width:30,height:30,fontSize:11}}>{ini(m)}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:13,color:"var(--t1)"}}>{m.prenom} {m.nom}</div>
-                  <div style={{fontSize:11.5,color:"var(--t4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:4}}>
+              {[
+                {label:"Payées",      count:payes,   pct:pctP, color:"#10b981", bg:"#d1fae5"},
+                {label:"En attente",  count:attente,  pct:pctA, color:"#f59e0b", bg:"#fef3c7"},
+                {label:"Impayées",    count:impayes,  pct:pctI, color:"#ef4444", bg:"#fee2e2"},
+              ].map(r=>(
+                <div key={r.label}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"var(--t2)"}}>{r.label}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:r.color}}>{r.count} <span style={{fontWeight:400,color:"var(--t4)"}}>({r.pct}%)</span></span>
+                  </div>
+                  <div style={{height:7,borderRadius:99,background:"var(--bg)"}}>
+                    <div style={{height:"100%",borderRadius:99,background:r.color,width:r.pct+"%",transition:"width .5s"}}/>
+                  </div>
                 </div>
-                <MBadge s={m.statut} />
+              ))}
+              <div style={{marginTop:8,padding:"10px 12px",background:"var(--bg)",borderRadius:10,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,color:"var(--t4)"}}>Total adhérents</span>
+                <span style={{fontSize:13,fontWeight:800,color:"var(--t1)"}}>{members.length}</span>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
 
-      
+      {/* ── Row 2 : recent docs + recent messages + quick access ── */}
       <div className="row" style={{alignItems:"start"}}>
+
+        {/* Documents récents */}
         <div className="col">
           <div className="card">
             <div className="card-hd">
               <div className="card-title">Documents récents</div>
               <span className="card-link" onClick={()=>set("documents")}>Voir tous →</span>
             </div>
-            <div className="doc-grid">
-              {DOCS.map(d=>(
-                <div key={d.name} className="doc-item">
-                  <div className="doc-ico" style={{background:d.bg}}>
-                    <Icon name="doc" size={18} color={d.ico} />
-                  </div>
-                  <div>
-                    <div className="doc-name">{d.name}</div>
-                    <div className="doc-size">{d.size}</div>
-                  </div>
+            {recentDocs.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📂</div>
+                  Aucun document
+                  <div style={{marginTop:10}}><span className="card-link" style={{fontSize:13}} onClick={()=>set("documents")}>Ajouter un document →</span></div>
                 </div>
+              : recentDocs.map((d,i)=>{
+                  const ext=docExt(d.name);
+                  const ec=EXT_COLORS[ext]||{bg:"#f3f4f6",color:"#374151"};
+                  return (
+                    <div key={i} className="ri">
+                      <div style={{width:36,height:36,borderRadius:9,background:ec.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:10,fontWeight:800,color:ec.color}}>{ext}</div>
+                      <div className="ri-main">
+                        <div className="ri-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.name}</div>
+                        <div className="ri-sub">{d.category||"Autre"} · {d.size}</div>
+                      </div>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        {/* Messages récents */}
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Messages récents</div>
+              <span className="card-link" onClick={()=>set("messages")}>Historique →</span>
+            </div>
+            {recentMsgs.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📭</div>
+                  Aucun message envoyé
+                </div>
+              : recentMsgs.map(m=>{
+                  const c=SOURCE_COLORS[m.source]||"#6b7280";
+                  const l=SOURCE_LABELS[m.source]||m.source||"?";
+                  return (
+                    <div key={m.id} className="ri" style={{cursor:"pointer"}} onClick={()=>set("messages")}>
+                      <div style={{width:36,height:36,borderRadius:"50%",background:c+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,fontWeight:700,color:c}}>
+                        {(m.prenom||m.nom||m.to||"?")[0]?.toUpperCase()}
+                      </div>
+                      <div className="ri-main">
+                        <div className="ri-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.subject}</div>
+                        <div className="ri-sub">{m.prenom} {m.nom} · <span style={{color:c,fontWeight:600}}>{l}</span></div>
+                      </div>
+                      <div style={{fontSize:10,color:"var(--t4)",whiteSpace:"nowrap"}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}</div>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        {/* Accès rapide */}
+        <div className="col-right">
+          <div className="card">
+            <div className="card-hd"><div className="card-title">Accès rapide</div></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:4}}>
+              {QUICK.map(q=>(
+                <button key={q.page} onClick={()=>set(q.page)} style={{
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"14px 8px",
+                  background:q.bg,border:"none",borderRadius:12,cursor:"pointer",transition:"all .15s",
+                  color:q.color
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.1)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}
+                >
+                  <div style={{width:36,height:36,borderRadius:10,background:q.color,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <Icon name={q.icon} size={17} color="white"/>
+                  </div>
+                  <span style={{fontSize:11.5,fontWeight:700,textAlign:"center"}}>{q.label}</span>
+                </button>
               ))}
             </div>
           </div>
         </div>
-
-        <div className="col">
-          <div className="card">
-            <div className="card-hd">
-              <div className="card-title">Envoyer une nouvelle</div>
-              <span style={{fontSize:12,color:"var(--t4)"}}>à tous les adhérents</span>
-            </div>
-            <div className="cf">
-              <div>
-                <div className="clabel">Titre</div>
-                <input className="ci" placeholder="Ex : Assemblée générale 2026" value={subj} onChange={e=>setSubj(e.target.value)} />
-              </div>
-              <div>
-                <div className="clabel">Message</div>
-                <textarea className="cta" placeholder={"Bonjour à tous,\n\nVotre message ici…"} value={msg} onChange={e=>setMsg(e.target.value)} />
-              </div>
-              <div>
-                <div className="clabel">Destinataires</div>
-                <select className="csel" value={dest} onChange={e=>setDest(e.target.value)}>
-                  <option value="all">Tous les adhérents ({members.filter(m=>m.statut==="actif").length})</option>
-                  <option value="late">Cotisations en retard ({members.filter(m=>m.cotisation!=="payée").length})</option>
-                </select>
-              </div>
-              <button className="send-btn" onClick={doSend} disabled={!subj||!msg||sending}>
-                <Icon name="mail" size={15} color="white" />
-                {sending?"Envoi en cours…":"Envoyer à tous les adhérents"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-right">
-          <div className="card">
-            <div className="card-hd">
-              <div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:4}}>
-                <Icon name="invoice" size={14} color="white" />
-              </div>
-              <div className="card-title">Générateur de facture</div>
-            </div>
-            <div className="ig">
-              <div className="ig-row">
-                <div>
-                  <div className="clabel">Nom</div>
-                  <input className="ci" value={igNom} onChange={e=>setIgNom(e.target.value)} />
-                </div>
-                <div>
-                  <div className="clabel">Prénom</div>
-                  <input className="ci" value={igPre} onChange={e=>setIgPre(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <div className="clabel">Montant (€)</div>
-                <input className="ci" value={igMt} onChange={e=>setIgMt(e.target.value)} />
-              </div>
-              <div>
-                <div className="clabel">Objet</div>
-                <input className="ci" value={igObj} onChange={e=>setIgObj(e.target.value)} />
-              </div>
-              <div>
-                <div className="clabel">Date</div>
-                <input className="ci" type="date" value={igDate} onChange={e=>setIgDate(e.target.value)} />
-              </div>
-              <button className="send-btn" onClick={async ()=>{
-                setIgGen(true);
-                await sb.from("factures").insert([{
-                  nom_membre:`${igPre} ${igNom}`,
-                  montant:parseFloat(igMt)||25,
-                  statut:"en attente",
-                  type:igObj,
-                  date:igDate
-                }]);
-                generateBeautifulPDF(igPre,igNom,"",igMt,igObj,igDate,null,"en attente");
-              }}>
-                <Icon name="invoice" size={14} color="white"/> Générer la facture
-              </button>
-              {igGen && (
-                <button style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}
-                  onMouseOver={e=>e.currentTarget.style.background="#EBF4FF"}
-                  onMouseOut={e=>e.currentTarget.style.background="white"}>
-                  ⬇ Télécharger le PDF
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
-
-      {sent && <div className="toast"><Icon name="mail" size={15} color="white" /> Email envoyé à {members.filter(m=>m.statut==="actif").length} membres</div>}
     </div>
   );
 }
@@ -2852,7 +2884,8 @@ function App() {
           template_params:{ email:to, prenom, nom, role:role||"Membre", subject, titre, message, header_color }
         })
       });
-      logMessage({to, prenom, nom, subject, message, source:"membre"});
+      const src = ["paiement","en attente","impayée"].includes(type) ? "facture" : "membre";
+      logMessage({to, prenom, nom, subject, message, source: src});
       console.log("✅ Email envoyé:",type,"→",to);
     }catch(e){console.error("EmailJS error:",e);}
   }
