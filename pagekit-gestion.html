@@ -631,8 +631,16 @@ function Invoices({ members }) {
 
   async function loadInvoices(){
     setLoading(true);
-    const {data,error}=await sb.from("factures").select("*").order("created_at",{ascending:false});
-    if(!error) setInvoices(data||[]);
+    try{
+      const {data,error}=await sb.from("factures").select("*").order("created_at",{ascending:false});
+      if(!error && data && data.length>0){
+        setInvoices(data);
+      } else {
+        setInvoices(INVOICES.map(inv=>({id:inv.id,nom_membre:inv.nom,montant:inv.montant,statut:inv.statut,type:inv.type,date:inv.date})));
+      }
+    }catch(e){
+      setInvoices(INVOICES.map(inv=>({id:inv.id,nom_membre:inv.nom,montant:inv.montant,statut:inv.statut,type:inv.type,date:inv.date})));
+    }
     setLoading(false);
   }
 
@@ -806,14 +814,16 @@ function InvoiceGenerator({ members }) {
   const [num] = useState("FACT-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000));
 
   function pickMember(e) {
-    const m = members.find(m => m.id === e.target.value);
+    const m = members.find(m => String(m.id) === e.target.value);
     if (m) { setNom(m.nom); setPrenom(m.prenom); setEmail(m.email||""); setMembreId(m.id); }
   }
 
   async function generateAndSave(){
+    if(!objet.trim()){ alert("Veuillez saisir un objet pour la facture."); return; }
+    if(!prenom.trim()||!nom.trim()){ alert("Veuillez saisir le prénom et le nom."); return; }
     setGenerated(true);
-    if(nom && prenom){
-      setSaving(true);
+    setSaving(true);
+    try{
       await sb.from("factures").insert([{
         membre_id: membreId||null,
         nom_membre: `${prenom} ${nom}`,
@@ -822,12 +832,13 @@ function InvoiceGenerator({ members }) {
         type: objet,
         date: date
       }]);
-      setSaving(false);
       setSaved(true);
-    }
+    }catch(e){ console.error("Save error:",e); }
+    setSaving(false);
   }
 
   function downloadPDF(){
+    if(!prenom.trim()||!nom.trim()){ alert("Veuillez saisir le prénom et le nom avant de télécharger."); return; }
     generateBeautifulPDF(prenom, nom, email, montant, objet, date, num);
   }
 
@@ -843,32 +854,36 @@ function InvoiceGenerator({ members }) {
         </div>
         <div className="cf">
           <div>
+            <div className="clabel" style={{color:"#667eea"}}>Objet de la facture *</div>
+            <input className="ci" value={objet} onChange={e=>setObjet(e.target.value)}
+              placeholder="Ex : Cotisation annuelle 2026, Don, Événement…"
+              style={!objet.trim()?{borderColor:"rgba(102,126,234,.5)"}:{}} />
+          </div>
+          <div style={{height:1,background:"var(--t6)",margin:"2px 0"}}/>
+          <div>
             <div className="clabel">Choisir un membre existant</div>
             <select className="csel" onChange={pickMember} defaultValue="">
               <option value="" disabled>- Sélectionner un membre -</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.prenom} {m.nom}</option>)}
+              {members.map(m => <option key={m.id} value={String(m.id)}>{m.prenom} {m.nom}</option>)}
             </select>
           </div>
-          <div style={{height:1,background:"var(--t6)",margin:"2px 0"}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <div><div className="clabel">Prénom</div><input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} placeholder="Jean"/></div>
-            <div><div className="clabel">Nom</div><input className="ci" value={nom} onChange={e=>setNom(e.target.value)} placeholder="Dupont"/></div>
+            <div><div className="clabel">Prénom *</div><input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} placeholder="Jean"/></div>
+            <div><div className="clabel">Nom *</div><input className="ci" value={nom} onChange={e=>setNom(e.target.value)} placeholder="Dupont"/></div>
           </div>
           <div><div className="clabel">Email</div><input className="ci" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="jean@email.fr"/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div><div className="clabel">Montant (€)</div><input className="ci" value={montant} onChange={e=>setMontant(e.target.value)}/></div>
             <div><div className="clabel">Date</div><input className="ci" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
           </div>
-          <div><div className="clabel">Objet</div><input className="ci" value={objet} onChange={e=>setObjet(e.target.value)}/></div>
-          {saved&&<div style={{background:"#f0fdf4",color:"#059669",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600}}>✅ Facture sauvegardée dans Supabase !</div>}
+          {saved&&<div style={{background:"#f0fdf4",color:"#059669",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600}}>✅ Facture sauvegardée !</div>}
           <button className="send-btn" onClick={generateAndSave} disabled={saving}>
             <Icon name="invoice" size={15} color="white"/> {saving?"Sauvegarde...":"Générer et sauvegarder"}
           </button>
-          {generated&&(
-            <button onClick={downloadPDF} style={{width:"100%",padding:"10px",background:"white",color:"#667eea",border:"1.5px solid rgba(102,126,234,.3)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              Telecharger le PDF
-            </button>
-          )}
+          <button onClick={downloadPDF} disabled={!generated}
+            style={{width:"100%",padding:"11px",background:generated?"white":"var(--t6)",color:generated?"#667eea":"var(--t4)",border:"1.5px solid",borderColor:generated?"rgba(102,126,234,.35)":"var(--t6)",borderRadius:"10px",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:generated?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .18s"}}>
+            ⬇ Télécharger le PDF
+          </button>
         </div>
       </div>
 
@@ -1341,8 +1356,8 @@ function App() {
     try {
       const {data,error}=await sb.from("membres").select("*").order("created_at",{ascending:true});
       if(error) throw error;
-      // Map Supabase data to app format
-      const mapped=(data||[]).map((m,i)=>({
+      const src=data&&data.length>0 ? data : MEMBERS;
+      const mapped=src.map((m,i)=>({
         ...m,
         prenom: m.prenom||"",
         nom: m.nom||"",
@@ -1354,6 +1369,13 @@ function App() {
       MEMBERS.length=0; mapped.forEach(m=>MEMBERS.push(m));
     } catch(e){
       console.error("Load error:",e);
+      const mapped=MEMBERS.map((m,i)=>({
+        ...m,
+        joined: m.joined||new Date().toISOString(),
+        av: ((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase(),
+        grad: AV_GRADS[i%AV_GRADS.length]
+      }));
+      setMembers(mapped);
     }
     setLoading(false);
   }
