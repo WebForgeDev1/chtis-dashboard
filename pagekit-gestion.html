@@ -628,6 +628,8 @@ function Invoices({ members }) {
   const [filt,setFilt]=useState("toutes");
   const [invoices,setInvoices]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [showAdd,setShowAdd]=useState(false);
+  const [addForm,setAddForm]=useState({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
 
   async function loadInvoices(){
     setLoading(true);
@@ -644,22 +646,45 @@ function Invoices({ members }) {
     setLoading(false);
   }
 
-  async function markPaid(inv){
-    await sb.from("factures").update({statut:"payée"}).eq("id",inv.id);
-    loadInvoices();
+  function markPaid(inv){
+    setInvoices(prev=>prev.map(i=>i.id===inv.id?{...i,statut:"payée"}:i));
+    sb.from("factures").update({statut:"payée"}).eq("id",inv.id).then(()=>{}).catch(()=>{});
   }
 
-  async function deleteInvoice(inv){
-    await sb.from("factures").delete().eq("id",inv.id);
-    loadInvoices();
+  function deleteInvoice(inv){
+    if(!window.confirm("Supprimer cette facture ?")) return;
+    setInvoices(prev=>prev.filter(i=>i.id!==inv.id));
+    sb.from("factures").delete().eq("id",inv.id).then(()=>{}).catch(()=>{});
+  }
+
+  function addInvoice(){
+    const nm=addForm.nom_membre||addForm.membre;
+    if(!nm||!addForm.objet) return;
+    const newInv={
+      id:"local-"+Date.now(),
+      nom_membre:nm,
+      montant:parseFloat(addForm.montant)||25,
+      statut:addForm.statut,
+      type:addForm.objet,
+      date:addForm.date
+    };
+    setInvoices(prev=>[newInv,...prev]);
+    sb.from("factures").insert([{nom_membre:nm,montant:newInv.montant,statut:newInv.statut,type:newInv.type,date:newInv.date}]).then(()=>{}).catch(()=>{});
+    setShowAdd(false);
+    setAddForm({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
+  }
+
+  function pickAddMember(e){
+    const m=members.find(m=>String(m.id)===e.target.value);
+    if(m) setAddForm(f=>({...f,membre:String(m.id),nom_membre:`${m.prenom} ${m.nom}`}));
   }
 
   React.useEffect(()=>{loadInvoices();},[]);
 
   const list=invoices.filter(i=>filt==="toutes"||i.statut===filt);
-  const paid=invoices.filter(i=>i.statut==="payée").reduce((a,i)=>a+i.montant,0);
-  const pending=invoices.filter(i=>i.statut==="en attente").reduce((a,i)=>a+i.montant,0);
-  const unpaid=invoices.filter(i=>i.statut==="impayée").reduce((a,i)=>a+i.montant,0);
+  const paid=invoices.filter(i=>i.statut==="payée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
+  const pending=invoices.filter(i=>i.statut==="en attente").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
+  const unpaid=invoices.filter(i=>i.statut==="impayée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
 
   const IST=[
     {l:"Encaissé",v:`${paid} €`,s:`${invoices.filter(i=>i.statut==="payée").length} payées`,bg:"linear-gradient(127deg,#56ab2f,#a8e063)"},
@@ -682,8 +707,9 @@ function Invoices({ members }) {
       <div className="card">
         <div className="card-hd">
           <div className="card-title">Factures {new Date().getFullYear()}</div>
-          <div style={{display:"flex",gap:6}}>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
             {["toutes","payée","en attente","impayée"].map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}
+            <button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>
           </div>
         </div>
         {loading ? <div style={{padding:"40px",textAlign:"center",color:"var(--t4)"}}>Chargement...</div> :
@@ -694,7 +720,7 @@ function Invoices({ members }) {
               <tr key={inv.id}>
                 <td style={{fontWeight:700}}>{inv.nom_membre}</td>
                 <td style={{color:"var(--t3)",fontSize:13}}>{inv.type}</td>
-                <td style={{color:"var(--t3)",fontSize:13}}>{new Date(inv.date).toLocaleDateString("fr-FR")}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{inv.date?new Date(inv.date).toLocaleDateString("fr-FR"):"-"}</td>
                 <td style={{fontWeight:800}}>{inv.montant} €</td>
                 <td><SBadge s={inv.statut} /></td>
                 <td>
@@ -702,9 +728,7 @@ function Invoices({ members }) {
                     {inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
                     <button className="pdf-btn" onClick={()=>{
                       const parts=(inv.nom_membre||"").split(" ");
-                      const p=parts[0]||"";
-                      const n=parts.slice(1).join(" ")||"";
-                      generateBeautifulPDF(p,n,"",inv.montant,inv.type,inv.date,null);
+                      generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null);
                     }}>📄 PDF</button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
@@ -714,6 +738,55 @@ function Invoices({ members }) {
           </tbody>
         </table>}
       </div>
+
+      {showAdd&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:460,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:16,fontWeight:800,color:"var(--t1)"}}>Ajouter une facture</div>
+              <button onClick={()=>setShowAdd(false)} style={{background:"#f3f4f6",border:"none",width:30,height:30,borderRadius:8,fontSize:16,cursor:"pointer",color:"var(--t3)"}}>✕</button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <div className="clabel">Membre</div>
+                <select className="csel" onChange={pickAddMember} defaultValue="">
+                  <option value="" disabled>- Sélectionner un membre -</option>
+                  {members.map(m=><option key={m.id} value={String(m.id)}>{m.prenom} {m.nom}</option>)}
+                </select>
+              </div>
+              {addForm.nom_membre&&<div style={{padding:"8px 12px",background:"#f0fdf4",borderRadius:8,fontSize:13,color:"#059669",fontWeight:600}}>✓ {addForm.nom_membre}</div>}
+              <div>
+                <div className="clabel">Objet *</div>
+                <input className="ci" value={addForm.objet} onChange={e=>setAddForm(f=>({...f,objet:e.target.value}))} placeholder="Cotisation annuelle 2026"/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div>
+                  <div className="clabel">Montant (€)</div>
+                  <input className="ci" value={addForm.montant} onChange={e=>setAddForm(f=>({...f,montant:e.target.value}))}/>
+                </div>
+                <div>
+                  <div className="clabel">Date</div>
+                  <input className="ci" type="date" value={addForm.date} onChange={e=>setAddForm(f=>({...f,date:e.target.value}))}/>
+                </div>
+              </div>
+              <div>
+                <div className="clabel">Statut</div>
+                <select className="csel" value={addForm.statut} onChange={e=>setAddForm(f=>({...f,statut:e.target.value}))}>
+                  <option value="en attente">En attente</option>
+                  <option value="payée">Payée</option>
+                  <option value="impayée">Impayée</option>
+                </select>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+                <button onClick={()=>setShowAdd(false)} style={{padding:"10px 20px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:10,fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+                <button className="send-btn" style={{width:"auto",padding:"10px 24px"}} onClick={addInvoice}>
+                  <Icon name="plus" size={14} color="white"/> Ajouter la facture
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
