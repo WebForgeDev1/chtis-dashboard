@@ -2424,6 +2424,163 @@ function EventsPage({members, onSend}){
   );
 }
 
+/* ── MESSAGES PAGE ── */
+function MessagesPage() {
+  const MSG_LS = "chtis_messages";
+  const SOURCE_LABELS = {
+    membre:      {label:"Membre",      color:"#2563eb", bg:"#eff6ff"},
+    broadcast:   {label:"Actualités",  color:"#7c3aed", bg:"#f5f3ff"},
+    "événement": {label:"Événement",   color:"#0891b2", bg:"#ecfeff"},
+    facture:     {label:"Facture",     color:"#d97706", bg:"#fffbeb"},
+  };
+
+  const [logs, setLogs] = React.useState(()=>JSON.parse(localStorage.getItem(MSG_LS)||"[]"));
+  const [search, setSearch] = React.useState("");
+  const [filterSrc, setFilterSrc] = React.useState("tous");
+  const [detail, setDetail] = React.useState(null);
+
+  React.useEffect(()=>{
+    const refresh = ()=> setLogs(JSON.parse(localStorage.getItem(MSG_LS)||"[]"));
+    window.addEventListener("storage", refresh);
+    const id = setInterval(refresh, 3000);
+    return ()=>{ window.removeEventListener("storage", refresh); clearInterval(id); };
+  },[]);
+
+  const filtered = logs.filter(m=>{
+    const q = search.toLowerCase();
+    const matchSearch = !q || m.to.toLowerCase().includes(q) || (m.nom||"").toLowerCase().includes(q) || (m.subject||"").toLowerCase().includes(q);
+    const matchSrc = filterSrc==="tous" || m.source===filterSrc;
+    return matchSearch && matchSrc;
+  });
+
+  const sources = ["tous","membre","broadcast","événement","facture"];
+
+  function fmtDate(iso){
+    const d = new Date(iso);
+    return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  }
+
+  function srcStyle(src){ return SOURCE_LABELS[src]||{label:src||"?",color:"#6b7280",bg:"#f3f4f6"}; }
+
+  function handleClear(){
+    if(!window.confirm("Effacer tout l'historique des messages ?")) return;
+    localStorage.removeItem(MSG_LS);
+    setLogs([]);
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Historique des messages</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{logs.length} email{logs.length!==1?"s":""} envoyé{logs.length!==1?"s":""} depuis le site</div>
+        </div>
+        {logs.length>0&&<button onClick={handleClear} style={{padding:"8px 16px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer"}}>Effacer l'historique</button>}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20,alignItems:"center"}}>
+        <div style={{position:"relative",flex:"1",minWidth:200}}>
+          <input
+            value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Rechercher destinataire, objet..."
+            style={{width:"100%",padding:"9px 14px 9px 36px",border:"1.5px solid var(--border)",borderRadius:10,fontSize:13,background:"var(--bg)",color:"var(--t1)",outline:"none"}}
+          />
+          <svg style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",opacity:.4}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {sources.map(s=>{
+            const sc = s==="tous"?{label:"Tous",color:"#374151",bg:"#f3f4f6"}:srcStyle(s);
+            return (
+              <button key={s} onClick={()=>setFilterSrc(s)} style={{
+                padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+                background: filterSrc===s ? sc.color : sc.bg,
+                color: filterSrc===s ? "#fff" : sc.color,
+                transition:"all .15s"
+              }}>{sc.label}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* List */}
+      {filtered.length===0 ? (
+        <div className="card" style={{padding:"60px 24px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📭</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t2)",marginBottom:6}}>Aucun message</div>
+          <div style={{fontSize:13,color:"var(--t4)"}}>Les emails envoyés depuis le site apparaîtront ici automatiquement.</div>
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(m=>{
+            const sc = srcStyle(m.source);
+            return (
+              <div key={m.id} onClick={()=>setDetail(m)} style={{
+                background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:14,padding:"14px 18px",
+                display:"flex",alignItems:"center",gap:16,cursor:"pointer",transition:"box-shadow .15s",
+                boxShadow:"0 1px 4px rgba(0,0,0,.04)"
+              }}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)"}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}
+              >
+                {/* Avatar */}
+                <div style={{width:40,height:40,borderRadius:"50%",background:sc.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,fontWeight:700,color:sc.color}}>
+                  {(m.prenom||m.nom||m.to)[0]?.toUpperCase()||"?"}
+                </div>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,fontSize:13,color:"var(--t1)"}}>{m.prenom} {m.nom}</span>
+                    <span style={{fontSize:11,color:"var(--t4)"}}>({m.to})</span>
+                    <span style={{padding:"2px 9px",borderRadius:20,background:sc.bg,color:sc.color,fontSize:11,fontWeight:700}}>{sc.label}</span>
+                  </div>
+                  <div style={{fontWeight:600,fontSize:13,color:"var(--t2)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.subject}</div>
+                  <div style={{fontSize:12,color:"var(--t4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(m.message||"").replace(/\n/g," ")}</div>
+                </div>
+                {/* Date */}
+                <div style={{fontSize:11,color:"var(--t4)",whiteSpace:"nowrap",flexShrink:0}}>{fmtDate(m.date)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {detail&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setDetail(null)}>
+          <div style={{background:"var(--card)",borderRadius:20,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto",padding:32,position:"relative"}} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>setDetail(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",border:"none",background:"var(--bg)",cursor:"pointer",fontSize:18,color:"var(--t3)"}}>×</button>
+            {(()=>{
+              const sc=srcStyle(detail.source);
+              const d=new Date(detail.date);
+              const dateStr=d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+              return (<>
+                <div style={{marginBottom:20}}>
+                  <div style={{fontSize:18,fontWeight:800,color:"var(--t1)",marginBottom:6}}>{detail.subject}</div>
+                  <span style={{padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color,fontSize:11,fontWeight:700}}>{sc.label}</span>
+                </div>
+                <div style={{background:"var(--bg)",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+                  <div style={{fontSize:12,color:"var(--t4)",marginBottom:2}}>Destinataire</div>
+                  <div style={{fontWeight:700,color:"var(--t1)"}}>{detail.prenom} {detail.nom} <span style={{fontWeight:400,color:"var(--t4)"}}>({detail.to})</span></div>
+                </div>
+                <div style={{background:"var(--bg)",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+                  <div style={{fontSize:12,color:"var(--t4)",marginBottom:4}}>Date d'envoi</div>
+                  <div style={{fontWeight:600,color:"var(--t1)"}}>{dateStr}</div>
+                </div>
+              </>);
+            })()}
+            <div style={{background:"var(--bg)",borderRadius:12,padding:"14px 16px"}}>
+              <div style={{fontSize:12,color:"var(--t4)",marginBottom:8}}>Message</div>
+              <div style={{fontSize:13,color:"var(--t1)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{detail.message}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Placeholder({icon,label}) {
   return (
     <div className="card" style={{padding:"70px 24px",textAlign:"center"}}>
@@ -2635,6 +2792,21 @@ function App() {
   const EJS_TEMPLATE="template_q1ykzn9";
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
+  // ── Message log ──
+  const MSG_LOG_LS = "chtis_messages";
+  function logMessage({to, prenom, nom, subject, message, source}){
+    try{
+      const prev = JSON.parse(localStorage.getItem(MSG_LOG_LS)||"[]");
+      prev.unshift({
+        id: Date.now() + Math.random(),
+        to, prenom:prenom||"", nom:nom||to,
+        subject, message, source,
+        date: new Date().toISOString()
+      });
+      localStorage.setItem(MSG_LOG_LS, JSON.stringify(prev.slice(0,500)));
+    }catch(e){}
+  }
+
   async function sendEmail(to, prenom, nom, role, type){
     if(!to || !to.includes("@")) return;
     let subject, titre, message, header_color;
@@ -2680,11 +2852,12 @@ function App() {
           template_params:{ email:to, prenom, nom, role:role||"Membre", subject, titre, message, header_color }
         })
       });
+      logMessage({to, prenom, nom, subject, message, source:"membre"});
       console.log("✅ Email envoyé:",type,"→",to);
     }catch(e){console.error("EmailJS error:",e);}
   }
 
-  async function sendBroadcast(to, prenom, nom, subject, message){
+  async function sendBroadcast(to, prenom, nom, subject, message, source){
     if(!to||!to.includes("@")) return;
     try{
       await fetch("https://api.emailjs.com/api/v1.0/email/send",{
@@ -2695,6 +2868,7 @@ function App() {
           template_params:{email:to,prenom:prenom||"",nom:nom||to,role:"Adhérent",subject,titre:subject,message,header_color:"linear-gradient(135deg,#667eea,#764ba2)"}
         })
       });
+      logMessage({to, prenom, nom, subject, message, source: source||"broadcast"});
     }catch(e){console.error("Broadcast error:",e);}
   }
 
@@ -2783,11 +2957,12 @@ function App() {
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
       case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} />;
-      case "email":       return <EmailPage members={members} onSend={sendBroadcast} />;
+      case "email":       return <EmailPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"broadcast")} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
       case "contacts":    return <Contacts />;
-      case "events":      return <EventsPage members={members} onSend={sendBroadcast} />;
+      case "events":      return <EventsPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"événement")} />;
+      case "messages":    return <MessagesPage />;
       default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
     }
   }
