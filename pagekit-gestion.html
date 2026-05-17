@@ -12,7 +12,7 @@ const SUPABASE_KEY = "sb_publishable_5LUAwEZv_cK8n0FskHPxVw_6XbrqoV2";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // GLOBAL PDF GENERATOR
-function generateBeautifulPDF(prenom, nom, email, montant, objet, date, numFacture){
+function generateBeautifulPDF(prenom, nom, email, montant, objet, date, numFacture, statut){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF();
   const mt=parseFloat(montant)||25;
@@ -86,11 +86,24 @@ function generateBeautifulPDF(prenom, nom, email, montant, objet, date, numFactu
   doc.text("TOTAL TTC",116,206);
   doc.setFontSize(15); doc.setFont("helvetica","bold");
   doc.text(mt.toFixed(2)+" EUR",192,214,{align:"right"});
-  // Badge status
-  doc.setFillColor(255,251,235); doc.roundedRect(14,196,68,14,3,3,"F");
-  doc.setDrawColor(253,211,77); doc.roundedRect(14,196,68,14,3,3,"S");
-  doc.setTextColor(160,100,0); doc.setFontSize(7); doc.setFont("helvetica","bold");
-  doc.text("EN ATTENTE DE PAIEMENT",48,205,{align:"center"});
+  // Badge status dynamique
+  const st=statut||"en attente";
+  if(st==="payée"){
+    doc.setFillColor(236,253,245); doc.roundedRect(14,196,58,14,3,3,"F");
+    doc.setDrawColor(110,231,183); doc.roundedRect(14,196,58,14,3,3,"S");
+    doc.setTextColor(6,95,70); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("✓ PAYÉE",43,205,{align:"center"});
+  } else if(st==="impayée"){
+    doc.setFillColor(254,242,242); doc.roundedRect(14,196,58,14,3,3,"F");
+    doc.setDrawColor(252,165,165); doc.roundedRect(14,196,58,14,3,3,"S");
+    doc.setTextColor(153,27,27); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("IMPAYÉE",43,205,{align:"center"});
+  } else {
+    doc.setFillColor(255,251,235); doc.roundedRect(14,196,78,14,3,3,"F");
+    doc.setDrawColor(253,211,77); doc.roundedRect(14,196,78,14,3,3,"S");
+    doc.setTextColor(160,100,0); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("EN ATTENTE DE PAIEMENT",57,205,{align:"center"});
+  }
   // Footer
   doc.setFillColor(99,102,241); doc.rect(0,272,210,25,"F");
   doc.setFillColor(139,92,246); doc.rect(0,272,8,25,"F");
@@ -493,7 +506,7 @@ function Dashboard({ members, set }) {
                   type:igObj,
                   date:igDate
                 }]);
-                generateBeautifulPDF(igPre,igNom,"",igMt,igObj,igDate,null);
+                generateBeautifulPDF(igPre,igNom,"",igMt,igObj,igDate,null,"en attente");
               }}>
                 <Icon name="invoice" size={14} color="white"/> Générer la facture
               </button>
@@ -728,7 +741,7 @@ function Invoices({ members }) {
                     {inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
                     <button className="pdf-btn" onClick={()=>{
                       const parts=(inv.nom_membre||"").split(" ");
-                      generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null);
+                      generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null,inv.statut);
                     }}>📄 PDF</button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
@@ -912,7 +925,7 @@ function InvoiceGenerator({ members }) {
 
   function downloadPDF(){
     if(!prenom.trim()||!nom.trim()){ alert("Veuillez saisir le prénom et le nom avant de télécharger."); return; }
-    generateBeautifulPDF(prenom, nom, email, montant, objet, date, num);
+    generateBeautifulPDF(prenom, nom, email, montant, objet, date, num, "en attente");
   }
 
   return (
