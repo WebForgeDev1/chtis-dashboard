@@ -1978,8 +1978,13 @@ function EventModal({evt,members,onSave,onClose,onSend}){
         </div>
         {/* Tabs */}
         <div style={{display:"flex",borderBottom:"2px solid #f0f0f0",background:"#fafafa",flexShrink:0}}>
-          {[{id:"info",label:"📋 Informations"},{id:"participants",label:`👥 Participants (${form.participants.length})`}].map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"13px",border:"none",background:"transparent",color:tab===t.id?"#4338ca":"var(--t3)",fontWeight:tab===t.id?800:600,fontSize:13,cursor:"pointer",borderBottom:tab===t.id?`2.5px solid #667eea`:"2.5px solid transparent",transition:"all .15s",marginBottom:-2}}>
+          {[
+            {id:"info",label:"📋 Infos"},
+            {id:"participants",label:`👥 Participants (${form.participants.length})`},
+            {id:"email",label:"✉️ Invitation"},
+          ].map(t=>(
+            <button key={t.id} onClick={()=>{setTab(t.id);if(t.id==="email"&&!inviteSubject){setInviteSubject(buildDefaultSubject());setInviteMessage(buildDefaultMessage());}}}
+              style={{flex:1,padding:"12px 6px",border:"none",background:"transparent",color:tab===t.id?(t.id==="email"?"#059669":"#4338ca"):"var(--t3)",fontWeight:tab===t.id?800:600,fontSize:12.5,cursor:"pointer",borderBottom:tab===t.id?`2.5px solid ${t.id==="email"?"#059669":"#667eea"}`:"2.5px solid transparent",transition:"all .15s",marginBottom:-2}}>
               {t.label}
             </button>
           ))}
@@ -2041,51 +2046,71 @@ function EventModal({evt,members,onSave,onClose,onSend}){
                 })}
               </div>
 
-              {/* Option invitation email */}
-              {form.participants.length>0&&(
-                <div style={{marginTop:14,borderRadius:14,border:`2px solid ${sendInvite?"#667eea":"#e5e7eb"}`,background:sendInvite?"#f5f3ff":"#fafafa",padding:"14px 16px",transition:"all .15s"}}>
-                  <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer",marginBottom:sendInvite?14:0}}>
-                    <input type="checkbox" checked={sendInvite} onChange={e=>toggleInvite(e.target.checked)} style={{accentColor:"#667eea",width:17,height:17,flexShrink:0}}/>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:800,fontSize:13.5,color:sendInvite?"#4338ca":"var(--t1)"}}>✉️ Envoyer une invitation par e-mail</div>
-                      <div style={{fontSize:12,color:"var(--t3)",marginTop:2}}>
-                        {form.participants.filter(id=>{const m=members.find(mb=>(mb.id||String(mb.id))===id);return m&&m.email&&m.email.includes("@");}).length} destinataire{form.participants.length>1?"s":""} avec email valide
-                      </div>
+            </div>
+          )}
+
+          {tab==="email"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {/* Résumé destinataires */}
+              <div style={{padding:"12px 16px",borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:22}}>👥</span>
+                <div>
+                  <div style={{fontWeight:800,fontSize:13,color:"#065f46"}}>
+                    {form.participants.filter(id=>{const m=members.find(mb=>(mb.id||String(mb.id))===id);return m&&m.email&&m.email.includes("@");}).length} destinataire{form.participants.length!==1?"s":""} avec email valide
+                  </div>
+                  <div style={{fontSize:12,color:"#059669"}}>
+                    {form.participants.length===0?"Aucun participant sélectionné — ajoutez des membres dans l'onglet Participants.":"L'email sera personnalisé avec le prénom de chaque membre."}
+                  </div>
+                </div>
+              </div>
+
+              {form.participants.length===0?(
+                <div style={{textAlign:"center",padding:"30px 20px",color:"var(--t4)",fontSize:13}}>
+                  👆 Allez dans l'onglet <strong>Participants</strong> pour sélectionner les membres à inviter.
+                </div>
+              ):(
+                <>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:800,color:"var(--t2)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>Sujet de l'e-mail</div>
+                    <input value={inviteSubject} onChange={e=>setInviteSubject(e.target.value)}
+                      style={{width:"100%",padding:"10px 14px",border:"1.5px solid #e5e7eb",borderRadius:11,fontSize:13.5,fontWeight:600,outline:"none",background:"white",color:"var(--t1)",boxSizing:"border-box",transition:"border .15s"}}
+                      onFocus={e=>e.target.style.borderColor="#667eea"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
+                  </div>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div style={{fontSize:12,fontWeight:800,color:"var(--t2)",textTransform:"uppercase",letterSpacing:".05em"}}>Message</div>
+                      <button onClick={()=>{setInviteSubject(buildDefaultSubject());setInviteMessage(buildDefaultMessage());}}
+                        style={{fontSize:11.5,padding:"4px 12px",border:"1px solid #e5e7eb",borderRadius:8,background:"white",cursor:"pointer",color:"var(--t3)",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                        ↺ Réinitialiser
+                      </button>
+                    </div>
+                    <textarea value={inviteMessage} onChange={e=>setInviteMessage(e.target.value)} rows={9}
+                      style={{width:"100%",padding:"12px 14px",border:"1.5px solid #e5e7eb",borderRadius:11,fontSize:13,outline:"none",background:"white",color:"var(--t2)",resize:"vertical",lineHeight:1.7,fontFamily:"inherit",boxSizing:"border-box",transition:"border .15s"}}
+                      onFocus={e=>e.target.style.borderColor="#667eea"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
+                    <div style={{fontSize:11.5,color:"#7c3aed",marginTop:6,display:"flex",alignItems:"center",gap:5}}>
+                      💡 <span><strong>[Prénom]</strong> sera remplacé par le prénom de chaque membre lors de l'envoi.</span>
+                    </div>
+                  </div>
+                  <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"12px 14px",borderRadius:12,border:`2px solid ${sendInvite?"#667eea":"#e5e7eb"}`,background:sendInvite?"#f5f3ff":"#fafafa",transition:"all .15s"}}>
+                    <input type="checkbox" checked={sendInvite} onChange={e=>setSendInvite(e.target.checked)} style={{accentColor:"#667eea",width:18,height:18,flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:800,fontSize:13.5,color:sendInvite?"#4338ca":"var(--t1)"}}>Envoyer cet email lors de la création</div>
+                      <div style={{fontSize:12,color:"var(--t3)",marginTop:1}}>Les invitations seront envoyées automatiquement au moment de sauvegarder.</div>
                     </div>
                   </label>
-
-                  {sendInvite&&(
-                    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                      <div>
-                        <div style={{fontSize:11.5,fontWeight:700,color:"#4338ca",marginBottom:5,textTransform:"uppercase",letterSpacing:".04em"}}>Sujet de l'email</div>
-                        <input value={inviteSubject} onChange={e=>setInviteSubject(e.target.value)}
-                          style={{width:"100%",padding:"9px 12px",border:"1.5px solid #c4b5fd",borderRadius:10,fontSize:13,fontWeight:600,outline:"none",background:"white",color:"var(--t1)",boxSizing:"border-box"}}/>
-                      </div>
-                      <div>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-                          <div style={{fontSize:11.5,fontWeight:700,color:"#4338ca",textTransform:"uppercase",letterSpacing:".04em"}}>Corps du message</div>
-                          <button onClick={()=>{setInviteSubject(buildDefaultSubject());setInviteMessage(buildDefaultMessage());}}
-                            style={{fontSize:11,padding:"3px 10px",border:"1px solid #c4b5fd",borderRadius:7,background:"white",cursor:"pointer",color:"#4338ca",fontWeight:600}}>↺ Réinitialiser</button>
-                        </div>
-                        <textarea value={inviteMessage} onChange={e=>setInviteMessage(e.target.value)} rows={7}
-                          style={{width:"100%",padding:"10px 12px",border:"1.5px solid #c4b5fd",borderRadius:10,fontSize:12.5,outline:"none",background:"white",color:"var(--t2)",resize:"vertical",lineHeight:1.65,fontFamily:"inherit",boxSizing:"border-box"}}/>
-                        <div style={{fontSize:11,color:"#7c3aed",marginTop:4}}>💡 <strong>[Prénom]</strong> sera remplacé automatiquement par le prénom de chaque membre.</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                </>
               )}
             </div>
           )}
         </div>
         {/* Footer */}
         <div style={{padding:"16px 24px",borderTop:"1px solid #f0f0f0",display:"flex",gap:10,justifyContent:"flex-end",flexShrink:0,background:"white",flexWrap:"wrap",alignItems:"center"}}>
-          {sending&&<div style={{fontSize:13,color:"#667eea",fontWeight:700,flex:1}}>✉️ Envoi des invitations…</div>}
+          {sending&&<div style={{fontSize:13,color:"#667eea",fontWeight:700,flex:1}}>✉️ Envoi des invitations en cours…</div>}
           {sent&&<div style={{fontSize:13,color:"#059669",fontWeight:700,flex:1}}>✅ Invitations envoyées !</div>}
           <button onClick={onClose} style={{padding:"11px 22px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
           <button disabled={!valid||sending} onClick={handleSave}
-            style={{padding:"11px 26px",border:"none",borderRadius:12,background:valid?form.color:"#e5e7eb",color:"white",fontWeight:800,cursor:"pointer",fontSize:14,opacity:(valid&&!sending)?1:.6,boxShadow:(valid&&!sending)?`0 6px 20px ${form.color}55`:"none",transition:"all .2s"}}>
-            {sending?"Envoi…":evt?"💾 Enregistrer":sendInvite?"✨ Créer & inviter":"✨ Créer l'événement"}
+            style={{padding:"11px 26px",border:"none",borderRadius:12,background:(valid&&!sending)?form.color:"#e5e7eb",color:"white",fontWeight:800,cursor:"pointer",fontSize:14,opacity:(valid&&!sending)?1:.6,boxShadow:(valid&&!sending)?`0 6px 20px ${form.color}55`:"none",transition:"all .2s",display:"flex",alignItems:"center",gap:8}}>
+            <span>{sending?"Envoi…":evt?(sendInvite?"💾 Enregistrer & inviter":"💾 Enregistrer"):(sendInvite?"✨ Créer & inviter":"✨ Créer l'événement")}</span>
           </button>
         </div>
       </div>
