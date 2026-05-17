@@ -683,12 +683,33 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoice
 }
 
 /* INVOICES */
-function Invoices({ members, filterMember, onClearFilter }) {
+function Invoices({ members, filterMember, onClearFilter, onEmail }) {
   const [filt,setFilt]=useState("toutes");
   const [invoices,setInvoices]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showAdd,setShowAdd]=useState(false);
   const [addForm,setAddForm]=useState({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
+  const [emailRow,setEmailRow]=useState(null);
+  const [emailType,setEmailType]=useState("en attente");
+  const [sending,setSending]=useState(false);
+  const [emailSent,setEmailSent]=useState(null);
+  const EMAIL_TYPES=[
+    {v:"bienvenue",l:"Bienvenue"},
+    {v:"en attente",l:"Rappel cotisation"},
+    {v:"impayée",l:"Relance impayée"},
+    {v:"paiement",l:"Confirmation paiement"},
+  ];
+  async function doSendFromRow(inv){
+    const fullName=inv.nom_membre||"";
+    const member=members.find(m=>`${m.prenom} ${m.nom}`.toLowerCase()===fullName.toLowerCase());
+    if(!member||!member.email||!member.email.includes("@")){alert("Adresse e-mail introuvable pour ce membre.");return;}
+    setSending(true);
+    await onEmail(member.email,member.prenom,member.nom,member.role||"Membre",emailType);
+    setSending(false);
+    setEmailSent(inv.id);
+    setEmailRow(null);
+    setTimeout(()=>setEmailSent(null),3000);
+  }
 
   async function loadInvoices(){
     setLoading(true);
@@ -789,14 +810,28 @@ function Invoices({ members, filterMember, onClearFilter }) {
                 <td style={{fontWeight:800}}>{inv.montant} €</td>
                 <td><SBadge s={inv.statut} /></td>
                 <td>
-                  <div style={{display:"flex",gap:6}}>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                     {inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
                     <button className="pdf-btn" onClick={()=>{
                       const parts=(inv.nom_membre||"").split(" ");
                       generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null,inv.statut);
                     }}>📄 PDF</button>
+                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff",position:"relative"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
+                      {emailSent===inv.id?"✅ Envoyé":"✉️ Mail"}
+                    </button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
+                  {emailRow===inv.id&&(
+                    <div style={{marginTop:8,padding:"10px 12px",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                      <select value={emailType} onChange={e=>setEmailType(e.target.value)} style={{border:"1px solid #bae6fd",borderRadius:7,padding:"5px 8px",fontSize:13,background:"white",color:"#1e3a5f",fontWeight:600,outline:"none"}}>
+                        {EMAIL_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
+                      </select>
+                      <button onClick={()=>doSendFromRow(inv)} disabled={sending} style={{padding:"5px 14px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",color:"white",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer",opacity:sending?.6:1}}>
+                        {sending?"...":"Envoyer"}
+                      </button>
+                      <button onClick={()=>setEmailRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -1679,7 +1714,7 @@ function App() {
       case "dashboard": return <Dashboard members={members} set={go} />;
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} />;
       case "email":       return <EmailPage members={members} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
