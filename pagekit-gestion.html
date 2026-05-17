@@ -593,12 +593,16 @@ function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
 }
 
 /* DRAWER */
-function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoices }) {
+function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onSMS, onViewInvoices }) {
   if (!m) return null;
   const [showEmail, setShowEmail] = useState(false);
+  const [showSMS,   setShowSMS]   = useState(false);
   const [emailType, setEmailType] = useState("bienvenue");
+  const [smsType,   setSmsType]   = useState("bienvenue");
   const [sending, setSending] = useState(false);
+  const [smsSending, setSmsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [smsSent,   setSmsSent]   = useState(false);
 
   async function doSendEmail(){
     if(!m.email||!m.email.includes("@")){ alert("Ce membre n'a pas d'adresse e-mail valide."); return; }
@@ -609,6 +613,24 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoice
     setShowEmail(false);
     setTimeout(()=>setEmailSent(false), 3000);
   }
+
+  async function doSendSMS(){
+    if(!m.tel||m.tel==="—"||m.tel===""){ alert("Ce membre n'a pas de numéro de téléphone."); return; }
+    setSmsSending(true);
+    await onSMS(smsType);
+    setSmsSending(false);
+    setSmsSent(true);
+    setShowSMS(false);
+    setTimeout(()=>setSmsSent(false), 3000);
+  }
+
+  const MSG_TYPES = [
+    {v:"bienvenue",  l:"Message de bienvenue"},
+    {v:"en attente", l:"Rappel cotisation en attente"},
+    {v:"impayée",    l:"Relance cotisation impayée"},
+    {v:"paiement",   l:"Confirmation de paiement"},
+    {v:"evenement",  l:"Annonce événement"},
+  ];
 
   const EMAIL_TYPES = [
     {v:"bienvenue",    l:"Message de bienvenue"},
@@ -663,12 +685,34 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoice
           )}
 
           {emailSent&&<div style={{background:"#ECFDF5",color:"#065F46",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ E-mail envoyé à {m.email}</div>}
+          {smsSent&&<div style={{background:"#EFF6FF",color:"#1e3a8a",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ SMS envoyé au {m.tel}</div>}
+
+          {showSMS&&(
+            <div style={{background:"#EFF6FF",border:"1.5px solid #bfdbfe",borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#2563eb",textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Type de SMS</div>
+              {MSG_TYPES.map(t=>(
+                <label key={t.v} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",cursor:"pointer",fontSize:13,color:smsType===t.v?"#2563eb":"var(--t2)",fontWeight:smsType===t.v?700:400,borderBottom:"1px solid #dbeafe"}}>
+                  <input type="radio" name="smsType" value={t.v} checked={smsType===t.v} onChange={()=>setSmsType(t.v)} style={{accentColor:"#2563eb"}}/>
+                  {t.l}
+                </label>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>setShowSMS(false)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid #bfdbfe",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
+                <button onClick={doSendSMS} disabled={smsSending} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:smsSending?.6:1}}>
+                  {smsSending?"Envoi…":"📱 Envoyer SMS"}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="dr-st">Actions</div>
             <div className="act-list">
-              <button className="ab ab-p" onClick={()=>setShowEmail(v=>!v)}>
-                <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer la messagerie":"Envoyer un e-mail"}
+              <button className="ab ab-p" onClick={()=>{setShowEmail(v=>!v);setShowSMS(false);}}>
+                <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer messagerie":"Envoyer un e-mail"}
+              </button>
+              <button className="ab ab-s" style={{background:"#EFF6FF",color:"#1e40af",border:"1.5px solid #bfdbfe"}} onClick={()=>{setShowSMS(v=>!v);setShowEmail(false);}}>
+                📱 {showSMS?"Fermer SMS":"Envoyer un SMS"}
               </button>
               <button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
               {m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
@@ -683,21 +727,26 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoice
 }
 
 /* INVOICES */
-function Invoices({ members, filterMember, onClearFilter, onEmail }) {
+function Invoices({ members, filterMember, onClearFilter, onEmail, onSMS }) {
   const [filt,setFilt]=useState("toutes");
   const [invoices,setInvoices]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showAdd,setShowAdd]=useState(false);
   const [addForm,setAddForm]=useState({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
   const [emailRow,setEmailRow]=useState(null);
+  const [smsRow,setSmsRow]=useState(null);
   const [emailType,setEmailType]=useState("en attente");
+  const [smsType,setSmsType]=useState("en attente");
   const [sending,setSending]=useState(false);
+  const [smsSending,setSmsSending]=useState(false);
   const [emailSent,setEmailSent]=useState(null);
-  const EMAIL_TYPES=[
+  const [smsSent,setSmsSent]=useState(null);
+  const MSG_TYPES=[
     {v:"bienvenue",l:"Bienvenue"},
     {v:"en attente",l:"Rappel cotisation"},
     {v:"impayée",l:"Relance impayée"},
     {v:"paiement",l:"Confirmation paiement"},
+    {v:"evenement",l:"Annonce événement"},
   ];
   async function doSendFromRow(inv){
     const fullName=inv.nom_membre||"";
@@ -709,6 +758,17 @@ function Invoices({ members, filterMember, onClearFilter, onEmail }) {
     setEmailSent(inv.id);
     setEmailRow(null);
     setTimeout(()=>setEmailSent(null),3000);
+  }
+  async function doSendSMSFromRow(inv){
+    const fullName=inv.nom_membre||"";
+    const member=members.find(m=>`${m.prenom} ${m.nom}`.toLowerCase()===fullName.toLowerCase());
+    if(!member||!member.tel){alert("Numéro de téléphone introuvable pour ce membre.");return;}
+    setSmsSending(true);
+    await onSMS(member.tel,member.prenom,member.nom,smsType);
+    setSmsSending(false);
+    setSmsSent(inv.id);
+    setSmsRow(null);
+    setTimeout(()=>setSmsSent(null),3000);
   }
 
   async function loadInvoices(){
@@ -816,15 +876,19 @@ function Invoices({ members, filterMember, onClearFilter, onEmail }) {
                       const parts=(inv.nom_membre||"").split(" ");
                       generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null,inv.statut);
                     }}>📄 PDF</button>
-                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff",position:"relative"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
-                      {emailSent===inv.id?"✅ Envoyé":"✉️ Mail"}
+                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setSmsRow(null);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
+                      {emailSent===inv.id?"✅ Email":"✉️ Mail"}
+                    </button>
+                    <button className="pdf-btn" style={{color:"#1d4ed8",borderColor:"#93c5fd",background:"#dbeafe"}} onClick={()=>{setSmsRow(smsRow===inv.id?null:inv.id);setEmailRow(null);setSmsType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
+                      {smsSent===inv.id?"✅ SMS":"📱 SMS"}
                     </button>
                     <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>
                   </div>
                   {emailRow===inv.id&&(
                     <div style={{marginTop:8,padding:"10px 12px",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#1e3a5f"}}>✉️ E-mail :</span>
                       <select value={emailType} onChange={e=>setEmailType(e.target.value)} style={{border:"1px solid #bae6fd",borderRadius:7,padding:"5px 8px",fontSize:13,background:"white",color:"#1e3a5f",fontWeight:600,outline:"none"}}>
-                        {EMAIL_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
+                        {MSG_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
                       </select>
                       <button onClick={()=>doSendFromRow(inv)} disabled={sending} style={{padding:"5px 14px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",color:"white",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer",opacity:sending?.6:1}}>
                         {sending?"...":"Envoyer"}
@@ -832,6 +896,20 @@ function Invoices({ members, filterMember, onClearFilter, onEmail }) {
                       <button onClick={()=>setEmailRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
                     </div>
                   )}
+                  {smsRow===inv.id&&(
+                    <div style={{marginTop:8,padding:"10px 12px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#1e40af"}}>📱 SMS :</span>
+                      <select value={smsType} onChange={e=>setSmsType(e.target.value)} style={{border:"1px solid #bfdbfe",borderRadius:7,padding:"5px 8px",fontSize:13,background:"white",color:"#1e40af",fontWeight:600,outline:"none"}}>
+                        {MSG_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
+                      </select>
+                      <button onClick={()=>doSendSMSFromRow(inv)} disabled={smsSending} style={{padding:"5px 14px",background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",color:"white",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer",opacity:smsSending?.6:1}}>
+                        {smsSending?"...":"Envoyer"}
+                      </button>
+                      <button onClick={()=>setSmsRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
+                    </div>
+                  )}
+                  {smsSent===inv.id&&<div style={{marginTop:6,fontSize:12,color:"#1d4ed8",fontWeight:600}}>✅ SMS envoyé</div>}
+                  {emailSent===inv.id&&<div style={{marginTop:6,fontSize:12,color:"#059669",fontWeight:600}}>✅ E-mail envoyé</div>}
                 </td>
               </tr>
             ))}
@@ -1752,6 +1830,9 @@ function App() {
   const EJS_TEMPLATE="template_q1ykzn9";
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
+  // ── Brevo SMS config ──
+  const BREVO_KEY="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";
+
   async function sendEmail(to, prenom, nom, role, type){
     if(!to || !to.includes("@")) return;
     let subject, titre, message, header_color;
@@ -1799,6 +1880,35 @@ function App() {
       });
       console.log("✅ Email envoyé:",type,"→",to);
     }catch(e){console.error("EmailJS error:",e);}
+  }
+
+  function normalizeTel(tel){
+    let t=(tel||"").replace(/[\s.\-()+]/g,"");
+    if(t.startsWith("00")) t="+"+t.slice(2);
+    else if(t.startsWith("0")&&t.length===9) t="+33"+t.slice(1);
+    else if(!t.startsWith("+")) t="+33"+t;
+    return "+"+t.replace(/\D/g,"");
+  }
+
+  async function sendSMS(tel, prenom, nom, type){
+    const num=normalizeTel(tel);
+    if(!num||num.length<10){ alert("Numéro de téléphone invalide pour ce membre."); return; }
+    let content="";
+    if(type==="bienvenue") content=`Bonjour ${prenom}, bienvenue dans Ch'tis en Maine ! Nous sommes ravis de vous accueillir parmi nous.`;
+    else if(type==="en attente") content=`Bonjour ${prenom}, nous vous rappelons que votre cotisation Ch'tis en Maine est en attente. Merci de la régler dès que possible.`;
+    else if(type==="impayée") content=`Bonjour ${prenom}, votre cotisation Ch'tis en Maine est impayée. Merci de régulariser votre situation rapidement.`;
+    else if(type==="paiement") content=`Bonjour ${prenom}, nous avons bien reçu votre cotisation. Merci ! - Ch'tis en Maine`;
+    else if(type==="evenement") content=`Bonjour ${prenom}, un événement Ch'tis en Maine est organisé prochainement. Restez à l'écoute !`;
+    else content=`Bonjour ${prenom}, un message de l'association Ch'tis en Maine.`;
+    try{
+      const r=await fetch("https://api.brevo.com/v3/transactionalSMS/sms",{
+        method:"POST",
+        headers:{"api-key":BREVO_KEY,"Content-Type":"application/json"},
+        body:JSON.stringify({sender:"ChTisMaine",recipient:num,content})
+      });
+      if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}
+      console.log("✅ SMS envoyé:",type,"→",num);
+    }catch(e){console.error("Brevo SMS error:",e);alert("Erreur envoi SMS : "+e.message);}
   }
 
   async function handleAddMember(form){
@@ -1885,7 +1995,7 @@ function App() {
       case "dashboard": return <Dashboard members={members} set={go} />;
       case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
       case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} onSMS={sendSMS} />;
       case "email":       return <EmailPage members={members} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
@@ -1901,7 +2011,7 @@ function App() {
         <Topbar breadcrumb={bc} title={title} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
       </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onSMS={(type)=>sendSMS(sel.tel,sel.prenom,sel.nom,type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
       {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
       {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
       {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
