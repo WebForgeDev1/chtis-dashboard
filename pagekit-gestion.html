@@ -952,7 +952,6 @@ const DOC_STATIC=[
 ];
 
 function fmtSize(b){if(!b)return"—";if(b<1024)return b+" o";if(b<1048576)return(b/1024).toFixed(0)+" Ko";return(b/1048576).toFixed(1)+" Mo";}
-function fmtDate(d){try{return new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});}catch{return d;}}
 function docExt(name){return(name||"").split(".").pop().toLowerCase();}
 function docColor(name){
   const e=docExt(name);
