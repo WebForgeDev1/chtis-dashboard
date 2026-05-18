@@ -692,10 +692,10 @@ function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
           </div>
           {FILTS.map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f}</button>)}
         </div>
-        <button className="add-btn" onClick={onAdd}><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>
+        {onAdd&&<button className="add-btn" onClick={onAdd}><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>}
       </div>
       <table>
-        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th>{(onEdit||onDelete)&&<th>Actions</th>}</tr></thead>
         <tbody>
           {list.map(m=>(
             <tr key={m.id} onClick={()=>onSelect(m)} style={{cursor:"pointer"}}>
@@ -713,20 +713,20 @@ function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
               <td style={{color:"var(--t3)",fontSize:13}}>{m.ville}</td>
               <td><MBadge s={m.statut} /></td>
               <td><SBadge s={m.cotisation} /></td>
-              <td onClick={e=>e.stopPropagation()}>
+              {(onEdit||onDelete)&&<td onClick={e=>e.stopPropagation()}>
                 <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>onEdit(m)} style={{padding:"5px 10px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:7,cursor:"pointer",fontSize:12,color:"var(--t2)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                  {onEdit&&<button onClick={()=>onEdit(m)} style={{padding:"5px 10px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:7,cursor:"pointer",fontSize:12,color:"var(--t2)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
                     onMouseOver={e=>{e.currentTarget.style.borderColor="#667eea";e.currentTarget.style.color="#667eea"}}
                     onMouseOut={e=>{e.currentTarget.style.borderColor="var(--t6)";e.currentTarget.style.color="var(--t2)"}}>
                     <Icon name="edit" size={12} color="currentColor"/> Modifier
-                  </button>
-                  <button onClick={()=>onDelete(m)} style={{padding:"5px 10px",background:"#FFF5F5",border:"1.5px solid #FED7D7",borderRadius:7,cursor:"pointer",fontSize:12,color:"#C53030",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                  </button>}
+                  {onDelete&&<button onClick={()=>onDelete(m)} style={{padding:"5px 10px",background:"#FFF5F5",border:"1.5px solid #FED7D7",borderRadius:7,cursor:"pointer",fontSize:12,color:"#C53030",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
                     onMouseOver={e=>e.currentTarget.style.background="#FED7D7"}
                     onMouseOut={e=>e.currentTarget.style.background="#FFF5F5"}>
                     <Icon name="trash" size={12} color="#C53030"/> Supprimer
-                  </button>
+                  </button>}
                 </div>
-              </td>
+              </td>}
             </tr>
           ))}
         </tbody>
@@ -813,10 +813,10 @@ function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoice
               <button className="ab ab-p" onClick={()=>setShowEmail(v=>!v)}>
                 <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer messagerie":"Envoyer un e-mail"}
               </button>
-              <button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>
-              {m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
+              {onEdit&&<button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>}
+              {onMarkPaid&&m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
               <button className="ab ab-s" onClick={onViewInvoices}><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
-              <button className="ab ab-d" onClick={onDelete}><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>
+              {onDelete&&<button className="ab ab-d" onClick={onDelete}><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>}
             </div>
           </div>
         </div>
@@ -1255,7 +1255,8 @@ function docColor(name){
 
 const DOC_BUCKET = "documents";
 
-function DocsPage() {
+function DocsPage({ canDo }) {
+  canDo = canDo || (()=>true);
   const [docs,setDocs]=useState([]);
   const [cat,setCat]=useState("Tous");
   const [search,setSearch]=useState("");
@@ -1368,8 +1369,8 @@ function DocsPage() {
 
   return (
     <div>
-      {/* Upload zone */}
-      <div
+      {/* Upload zone — ajouter permission only */}
+      {canDo("ajouter")&&<div
         onDragOver={e=>{e.preventDefault();setDragOver(true);}}
         onDragLeave={()=>setDragOver(false)}
         onDrop={onDrop}
@@ -1382,7 +1383,7 @@ function DocsPage() {
           {uploading?"Traitement en cours…":"Glissez un fichier ici ou cliquez pour sélectionner"}
         </div>
         <div style={{fontSize:12,color:"var(--t4)"}}>PDF, Word, Excel, PowerPoint, Images, ZIP — max 50 Mo · Stockage Supabase</div>
-      </div>
+      </div>}
 
       {/* Upload error */}
       {uploadErr&&(
@@ -1477,7 +1478,7 @@ function DocsPage() {
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   <button className="pdf-btn" style={{flex:1,justifyContent:"center",color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>download(d)}>⬇ Télécharger</button>
-                  <button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>setDeleteId(d.id)}>🗑</button>
+                  {canDo("supprimer")&&<button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>setDeleteId(d.id)}>🗑</button>}
                 </div>
               </div>
             );
@@ -1937,7 +1938,8 @@ function ContactModal({ contact, onSave, onClose }) {
   );
 }
 
-function Contacts() {
+function Contacts({ canDo }) {
+  canDo = canDo || (()=>true);
   const [contacts,setContacts]=useState([]);
   const [search,setSearch]=useState("");
   const [showAdd,setShowAdd]=useState(false);
@@ -2002,7 +2004,7 @@ function Contacts() {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un contact..." style={{width:"100%",padding:"9px 12px 9px 36px",border:"1px solid #e5e7eb",borderRadius:10,fontSize:14,outline:"none",background:"#f9fafb",color:"var(--t1)"}}/>
           </div>
           <div style={{color:"var(--t3)",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{filtered.length} contact{filtered.length!==1?"s":""}</div>
-          <button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>
+          {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>}
         </div>
       </div>
 
@@ -2033,8 +2035,8 @@ function Contacts() {
                   </div>
                 </div>
                 <div style={{position:"absolute",top:10,right:10,display:"flex",gap:4}}>
-                  <button onClick={()=>setEditContact(c)} title="Modifier" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✏️</button>
-                  <button onClick={()=>setDeleteId(c.id)} title="Supprimer" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🗑</button>
+                  {canDo("modifier")&&<button onClick={()=>setEditContact(c)} title="Modifier" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✏️</button>}
+                  {canDo("supprimer")&&<button onClick={()=>setDeleteId(c.id)} title="Supprimer" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🗑</button>}
                 </div>
               </div>
               <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:8}}>
@@ -2304,7 +2306,8 @@ function EventModal({evt,members,onSave,onClose,onSend}){
   );
 }
 
-function EventsPage({members, onSend}){
+function EventsPage({members, onSend, canDo}){
+  canDo = canDo || (()=>true);
   const [events,setEvents]=useState([]);
   const [view,setView]=useState("list");
   const [calDate,setCalDate]=useState(new Date());
@@ -2418,8 +2421,8 @@ function EventsPage({members, onSend}){
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
                 <button onClick={e2=>{e2.stopPropagation();setDetailEvt(e);}} title="Voir le détail" style={{width:34,height:34,border:"1px solid #e5e7eb",borderRadius:10,background:"#f8fafc",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#eff6ff"} onMouseLeave={ev=>ev.currentTarget.style.background="#f8fafc"}>👁</button>
-                <button onClick={e2=>{e2.stopPropagation();setEditEvt(e);}} title="Modifier" style={{width:34,height:34,border:"1px solid #e5e7eb",borderRadius:10,background:"#f8fafc",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fefce8"} onMouseLeave={ev=>ev.currentTarget.style.background="#f8fafc"}>✏️</button>
-                <button onClick={e2=>{e2.stopPropagation();setDeleteId(e.id);}} title="Supprimer" style={{width:34,height:34,border:"1px solid #fecaca",borderRadius:10,background:"#fef2f2",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fee2e2"} onMouseLeave={ev=>ev.currentTarget.style.background="#fef2f2"}>🗑</button>
+                {canDo("modifier")&&<button onClick={e2=>{e2.stopPropagation();setEditEvt(e);}} title="Modifier" style={{width:34,height:34,border:"1px solid #e5e7eb",borderRadius:10,background:"#f8fafc",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fefce8"} onMouseLeave={ev=>ev.currentTarget.style.background="#f8fafc"}>✏️</button>}
+                {canDo("supprimer")&&<button onClick={e2=>{e2.stopPropagation();setDeleteId(e.id);}} title="Supprimer" style={{width:34,height:34,border:"1px solid #fecaca",borderRadius:10,background:"#fef2f2",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fee2e2"} onMouseLeave={ev=>ev.currentTarget.style.background="#fef2f2"}>🗑</button>}
               </div>
             </div>
           </div>
@@ -2448,7 +2451,7 @@ function EventsPage({members, onSend}){
             <div style={{fontSize:52,marginBottom:14}}>🗓️</div>
             <div style={{fontWeight:800,fontSize:17,color:"var(--t1)",marginBottom:8}}>Aucun événement planifié</div>
             <div style={{fontSize:14,color:"var(--t4)",marginBottom:22}}>Créez votre premier événement pour commencer à organiser l'agenda de l'association.</div>
-            <button className="add-btn" onClick={()=>setShowModal(true)} style={{margin:"0 auto",display:"inline-flex"}}><Icon name="plus" size={14} color="white"/> Créer un événement</button>
+            {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)} style={{margin:"0 auto",display:"inline-flex"}}><Icon name="plus" size={14} color="white"/> Créer un événement</button>}
           </div>
         )}
       </div>
@@ -2534,7 +2537,7 @@ function EventsPage({members, onSend}){
               </div>
             )}
           </div>
-          <button className="add-btn" onClick={()=>setShowModal(true)} style={{width:"100%",justifyContent:"center",padding:"13px"}}><Icon name="plus" size={15} color="white"/> Nouvel événement</button>
+          {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)} style={{width:"100%",justifyContent:"center",padding:"13px"}}><Icon name="plus" size={15} color="white"/> Nouvel événement</button>}
         </div>
       </div>
     );
@@ -2591,8 +2594,8 @@ function EventsPage({members, onSend}){
             )}
           </div>
           <div style={{padding:"16px 26px",borderTop:"1px solid #f0f0f0",display:"flex",gap:8,background:"#fafafa"}}>
-            <button onClick={()=>{setDetailEvt(null);setEditEvt(e);}} style={{flex:1,padding:"11px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:700,cursor:"pointer",fontSize:13}}>✏️ Modifier</button>
-            <button onClick={()=>{setDetailEvt(null);setDeleteId(e.id);}} style={{padding:"11px 18px",border:"none",borderRadius:12,background:"#fef2f2",color:"#dc2626",fontWeight:700,cursor:"pointer",fontSize:13}}>🗑</button>
+            {canDo("modifier")&&<button onClick={()=>{setDetailEvt(null);setEditEvt(e);}} style={{flex:1,padding:"11px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:700,cursor:"pointer",fontSize:13}}>✏️ Modifier</button>}
+            {canDo("supprimer")&&<button onClick={()=>{setDetailEvt(null);setDeleteId(e.id);}} style={{padding:"11px 18px",border:"none",borderRadius:12,background:"#fef2f2",color:"#dc2626",fontWeight:700,cursor:"pointer",fontSize:13}}>🗑</button>}
           </div>
         </div>
       </div>
@@ -2613,7 +2616,7 @@ function EventsPage({members, onSend}){
             </button>
           ))}
         </div>
-        {view==="list"&&<button className="add-btn" onClick={()=>setShowModal(true)}><Icon name="plus" size={14} color="white"/> Nouvel événement</button>}
+        {view==="list"&&canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)}><Icon name="plus" size={14} color="white"/> Nouvel événement</button>}
       </div>
 
       {view==="list"?<ListView/>:<CalendarView/>}
@@ -3048,7 +3051,8 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
 }
 
 /* ── MESSAGES PAGE ── */
-function MessagesPage() {
+function MessagesPage({ canDo }) {
+  canDo = canDo || (()=>true);
   const SOURCE_LABELS = {
     membre:      {label:"Membre",      color:"#2563eb", bg:"#eff6ff"},
     broadcast:   {label:"Actualités",  color:"#7c3aed", bg:"#f5f3ff"},
@@ -3104,7 +3108,7 @@ function MessagesPage() {
           <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Historique des messages</div>
           <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{loadingLogs?"Chargement…":`${logs.length} email${logs.length!==1?"s":""} envoyé${logs.length!==1?"s":""} depuis le site`}</div>
         </div>
-        {logs.length>0&&<button onClick={handleClear} style={{padding:"8px 16px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer"}}>Effacer l'historique</button>}
+        {logs.length>0&&canDo("supprimer")&&<button onClick={handleClear} style={{padding:"8px 16px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer"}}>Effacer l'historique</button>}
       </div>
 
       {/* Filters */}
@@ -3367,6 +3371,11 @@ function App() {
     return currentAdmin.permissions?.[section]?.voir !== false;
   }
 
+  function canDo(section, action){
+    if(!currentAdmin||currentAdmin.isSuperAdmin) return true;
+    return currentAdmin.permissions?.[section]?.[action] === true;
+  }
+
   function handleLogin(admin){
     setCurrentAdmin(admin);
     setIn(true);
@@ -3605,15 +3614,15 @@ function App() {
     if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",flexDirection:"column",gap:16}}><div style={{width:40,height:40,border:"4px solid #ede9fe",borderTop:"4px solid #667eea",borderRadius:"50%",animation:"spin 1s linear infinite"}}></div><div style={{color:"var(--t3)",fontSize:14}}>Chargement des données...</div></div>;
     switch(page){
       case "dashboard": return <Dashboard members={members} set={go} />;
-      case "members":   return <Members members={members} onSelect={setSel} onEdit={setEditMember} onDelete={setDeleteMember} onAdd={()=>setShowAddModal(true)} />;
-      case "documents": return <DocsPage />;
-      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} />;
-      case "email":       return <EmailPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"broadcast")} />;
+      case "members":   return <Members members={members} onSelect={setSel} onEdit={canDo("membres","modifier")?setEditMember:null} onDelete={canDo("membres","supprimer")?setDeleteMember:null} onAdd={canDo("membres","ajouter")?()=>setShowAddModal(true):null} />;
+      case "documents": return <DocsPage canDo={(a)=>canDo("documents",a)} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} canDo={(a)=>canDo("invoices",a)} />;
+      case "email":       return <EmailPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"broadcast")} canDo={(a)=>canDo("email",a)} />;
       case "invoice-gen": return <InvoiceGenerator members={members} />;
       case "add-member":  return <AddMember onCreated={()=>go("members")} />;
-      case "contacts":    return <Contacts />;
-      case "events":      return <EventsPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"événement")} />;
-      case "messages":    return <MessagesPage />;
+      case "contacts":    return <Contacts canDo={(a)=>canDo("contacts",a)} />;
+      case "events":      return <EventsPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"événement")} canDo={(a)=>canDo("events",a)} />;
+      case "messages":    return <MessagesPage canDo={(a)=>canDo("messages",a)} />;
       case "settings":    return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={false} />;
       case "add-admin":   return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={true} />;
       default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
@@ -3624,10 +3633,10 @@ function App() {
     <div className="shell">
       <Sidebar active={page} set={go} logout={()=>setIn(false)} currentAdmin={currentAdmin} canAccess={canAccess} onChangePass={()=>setShowChangePass(true)} />
       <div className="main">
-        <Topbar breadcrumb={bc} title={title} currentAdmin={currentAdmin} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
+        <Topbar breadcrumb={bc} title={title} currentAdmin={currentAdmin} action={page==="members"&&canDo("membres","ajouter")&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
       </div>
-      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={()=>{setEditMember(sel);setSel(null)}} onDelete={()=>setDeleteMember(sel)} onMarkPaid={()=>handleMarkPaid(sel)} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={canDo("membres","modifier")?()=>{setEditMember(sel);setSel(null)}:null} onDelete={canDo("membres","supprimer")?()=>setDeleteMember(sel):null} onMarkPaid={canDo("membres","modifier")?()=>handleMarkPaid(sel):null} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
       {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
       {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
       {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
