@@ -188,6 +188,13 @@ const PERM_ACTIONS = [
 function defaultPerms(){ const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:false,ajouter:false,modifier:false,supprimer:false};}); return p; }
 function fullPerms(){    const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:true, ajouter:true, modifier:true, supprimer:true};}); return p; }
 function viewOnlyPerms(){const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:true, ajouter:false,modifier:false,supprimer:false};}); return p; }
+function generatePassword(){
+  const up="ABCDEFGHJKMNPQRSTUVWXYZ", lo="abcdefghjkmnpqrstuvwxyz", nu="23456789", sp="!@#$";
+  const all=up+lo+nu+sp;
+  const pick=s=>s[Math.floor(Math.random()*s.length)];
+  const base=Array.from({length:7},()=>pick(all));
+  return [pick(up),pick(nu),pick(sp),...base].sort(()=>Math.random()-.5).join("");
+}
 const SUPER_ADMIN = {id:"super",prenom:"Henri",nom:"Beaumont",email:"admin@chtis-en-maine.fr",role:"Super Administrateur",isSuperAdmin:true};
 
 /* LOGIN */
@@ -197,12 +204,16 @@ function Login({ onLogin }) {
   const [rem, setRem] = useState(false);
   const [err, setErr] = useState("");
 
-  function go(e) {
+  async function go(e) {
     e.preventDefault();
     if (email === "admin@chtis-en-maine.fr" && pass === "admin") { onLogin(SUPER_ADMIN); return; }
-    const admins = JSON.parse(localStorage.getItem(ADMINS_LS)||"[]");
-    const found = admins.find(a=>a.email===email && a.password===pass);
-    if (found) { onLogin(found); return; }
+    try{
+      const {data,error}=await sb.from("admins").select("*").eq("email",email).single();
+      if(!error && data && data.password===pass){ onLogin({...data,mustChangePassword:data.must_change_password}); return; }
+    }catch(e2){}
+    const admins=JSON.parse(localStorage.getItem(ADMINS_LS)||"[]");
+    const found=admins.find(a=>a.email===email&&a.password===pass);
+    if(found){ onLogin(found); return; }
     setErr("Adresse e-mail ou mot de passe incorrect.");
   }
 
@@ -257,7 +268,7 @@ const NAVS = [
   {id:"settings",  icon:"settings", label:"Paramètres"},
 ];
 
-function Sidebar({ active, set, logout, currentAdmin, canAccess }) {
+function Sidebar({ active, set, logout, currentAdmin, canAccess, onChangePass }) {
   const MAIN_IDS  = ["dashboard","members","contacts","documents","invoices","email","events","messages"];
   const TOOLS_IDS = ["invoice-gen"];
   const ADMIN_IDS = ["settings"];
@@ -304,6 +315,15 @@ function Sidebar({ active, set, logout, currentAdmin, canAccess }) {
         </>)}
       </nav>
       <div className="sb-bot">
+        {currentAdmin && !currentAdmin.isSuperAdmin && (
+          <div onClick={onChangePass} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",margin:"0 8px 6px",borderRadius:10,cursor:"pointer",background:"rgba(102,126,234,.08)",border:"1px solid rgba(102,126,234,.15)"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(102,126,234,.15)"}
+            onMouseLeave={e=>e.currentTarget.style.background="rgba(102,126,234,.08)"}
+          >
+            <span style={{fontSize:14}}>🔐</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#a78bfa"}}>Changer mon mot de passe</span>
+          </div>
+        )}
         <div className="sb-user" onClick={logout}>
           <div className="uav">{adminInits}</div>
           <div style={{flex:1}}>
@@ -352,10 +372,18 @@ function Topbar({ breadcrumb, title, action, currentAdmin }) {
 
 /* DASHBOARD */
 function Dashboard({ members, set }) {
-  // ── Real data from localStorage ──
-  const docs   = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_docs")||"[]"),[]);
-  const events = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_events")||"[]"),[]);
-  const msgs   = React.useMemo(()=>JSON.parse(localStorage.getItem("chtis_messages")||"[]"),[]);
+  const [docs,setDocs]=React.useState([]);
+  const [events,setEvents]=React.useState([]);
+  const [msgs,setMsgs]=React.useState([]);
+
+  React.useEffect(()=>{
+    sb.from("documents").select("id,name,cat,date,size,type,url").order("created_at",{ascending:false}).limit(100)
+      .then(({data})=>{ if(data) setDocs(data); });
+    sb.from("evenements").select("id,titre,date,heure,lieu,color,participants").order("date",{ascending:true})
+      .then(({data})=>{ if(data) setEvents(data.map(e=>({...e,participants:e.participants||[]}))); });
+    sb.from("messages_log").select("id,prenom,nom,to,subject,source,date").order("date",{ascending:false}).limit(100)
+      .then(({data})=>{ if(data) setMsgs(data); });
+  },[]);
 
   const today = new Date(); today.setHours(0,0,0,0);
   const actifs    = members.filter(m=>m.statut==="actif").length;
@@ -1225,82 +1253,109 @@ function docColor(name){
   return{bg:"#F7FAFC",ico:"#4A5568",label:e.toUpperCase()||"FIC"};
 }
 
+const DOC_BUCKET = "documents";
+
 function DocsPage() {
   const [docs,setDocs]=useState([]);
   const [cat,setCat]=useState("Tous");
   const [search,setSearch]=useState("");
   const [sort,setSort]=useState("date");
   const [uploading,setUploading]=useState(false);
+  const [uploadErr,setUploadErr]=useState("");
   const [dragOver,setDragOver]=useState(false);
   const [deleteId,setDeleteId]=useState(null);
+  const [deleting,setDeleting]=useState(false);
   const [catForm,setCatForm]=useState("Autre");
   const [pendingFile,setPendingFile]=useState(null);
   const [editCatId,setEditCatId]=useState(null);
   const [editCatVal,setEditCatVal]=useState("Autre");
   const fileRef=React.useRef();
 
-  function loadDocs(){
+  const [loadingDocs,setLoadingDocs]=useState(true);
+
+  async function loadDocs(){
+    setLoadingDocs(true);
     try{
-      const stored=localStorage.getItem(DOC_LS);
-      if(stored){setDocs(JSON.parse(stored));return;}
+      const {data,error}=await sb.from("documents").select("*").order("created_at",{ascending:false});
+      if(!error&&data){ setDocs(data); setLoadingDocs(false); return; }
     }catch(e){}
-    setDocs(DOC_STATIC);
-    localStorage.setItem(DOC_LS,JSON.stringify(DOC_STATIC));
+    try{ const stored=localStorage.getItem(DOC_LS); if(stored){ setDocs(JSON.parse(stored)); } }catch(e){}
+    setLoadingDocs(false);
   }
-  function saveDocs(list){setDocs(list);localStorage.setItem(DOC_LS,JSON.stringify(list));}
-  function updateCat(id,newCat){saveDocs(docs.map(d=>d.id===id?{...d,cat:newCat}:d));setEditCatId(null);}
 
-  React.useEffect(()=>{loadDocs();},[]);
+  async function updateCat(id,newCat){
+    try{ await sb.from("documents").update({cat:newCat}).eq("id",id); }catch(e){}
+    setDocs(prev=>prev.map(d=>d.id===id?{...d,cat:newCat}:d));
+    setEditCatId(null);
+  }
 
-  function readFile(file,chosenCat){
-    if(file.size>8*1024*1024){alert("Fichier trop volumineux (max 8 Mo).");return;}
-    setUploading(true);
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const newDoc={
-        id:"d"+Date.now(),
-        name:file.name,
-        cat:chosenCat||"Autre",
-        date:new Date().toISOString().split("T")[0],
-        size:file.size,
-        data:e.target.result,
-        type:file.type
+  React.useEffect(()=>{ loadDocs(); },[]);
+
+  async function uploadFile(file, chosenCat){
+    if(file.size > 50*1024*1024){ setUploadErr("Fichier trop volumineux (max 50 Mo)."); return; }
+    setUploading(true); setUploadErr("");
+    try{
+      const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g,"_");
+      const path = `${Date.now()}_${safeName}`;
+      const { error: upErr } = await sb.storage.from(DOC_BUCKET).upload(path, file, { upsert: false });
+      if(upErr) throw upErr;
+      const { data: urlData } = sb.storage.from(DOC_BUCKET).getPublicUrl(path);
+      const newDoc = {
+        id: "d"+Date.now(),
+        name: file.name,
+        cat: chosenCat||"Autre",
+        date: new Date().toISOString().split("T")[0],
+        size: file.size,
+        type: file.type,
+        path,
+        url: urlData.publicUrl,
       };
-      const updated=[newDoc,...docs];
-      saveDocs(updated);
-      setUploading(false);
+      try{ await sb.from("documents").insert([newDoc]); }catch(e){ console.error("Doc meta save error:",e); }
+      setDocs(prev=>[newDoc,...prev]);
       setPendingFile(null);
-    };
-    reader.onerror=()=>{alert("Erreur lors de la lecture du fichier.");setUploading(false);};
-    reader.readAsDataURL(file);
+    }catch(e){
+      console.error("Upload error:",e);
+      setUploadErr("Erreur d'upload : " + (e.message||"Vérifiez que le bucket « documents » existe dans Supabase Storage et est Public."));
+    }
+    setUploading(false);
   }
 
   function onFileChange(e){
     const file=e.target.files[0];
-    if(file){setPendingFile(file);setCatForm("Autre");}
+    if(file){ setPendingFile(file); setCatForm("Autre"); setUploadErr(""); }
     e.target.value="";
   }
 
   function onDrop(e){
-    e.preventDefault();setDragOver(false);
+    e.preventDefault(); setDragOver(false);
     const file=e.dataTransfer.files[0];
-    if(file){setPendingFile(file);setCatForm("Autre");}
+    if(file){ setPendingFile(file); setCatForm("Autre"); setUploadErr(""); }
   }
 
-  function confirmUpload(){readFile(pendingFile,catForm);}
+  function confirmUpload(){ uploadFile(pendingFile, catForm); }
 
   function download(doc){
-    if(!doc.data){alert("Ce document d'exemple n'a pas de fichier réel associé.");return;}
-    const a=document.createElement("a");
-    a.href=doc.data;
-    a.download=doc.name;
-    a.click();
+    if(doc.url){
+      const a=document.createElement("a");
+      a.href=doc.url; a.download=doc.name; a.target="_blank"; a.click();
+    } else if(doc.data){
+      const a=document.createElement("a");
+      a.href=doc.data; a.download=doc.name; a.click();
+    } else {
+      alert("Ce document n'a pas de fichier associé.");
+    }
   }
 
-  function deleteDoc(){
-    const updated=docs.filter(d=>d.id!==deleteId);
-    saveDocs(updated);
-    setDeleteId(null);
+  async function deleteDoc(){
+    const doc = docs.find(d=>d.id===deleteId);
+    setDeleting(true);
+    if(doc?.path){
+      try{ await sb.storage.from(DOC_BUCKET).remove([doc.path]); }
+      catch(e){ console.error("Delete storage error:",e); }
+    }
+    try{ await sb.from("documents").delete().eq("id",deleteId); }catch(e){}
+    setDocs(prev=>prev.filter(d=>d.id!==deleteId));
+    setDeleteId(null); setDeleting(false);
   }
 
   const filtered=docs
@@ -1326,8 +1381,20 @@ function DocsPage() {
         <div style={{fontWeight:700,color:"var(--t1)",fontSize:14,marginBottom:4}}>
           {uploading?"Traitement en cours…":"Glissez un fichier ici ou cliquez pour sélectionner"}
         </div>
-        <div style={{fontSize:12,color:"var(--t4)"}}>PDF, Word, Excel, PowerPoint, Images — max 8 Mo</div>
+        <div style={{fontSize:12,color:"var(--t4)"}}>PDF, Word, Excel, PowerPoint, Images, ZIP — max 50 Mo · Stockage Supabase</div>
       </div>
+
+      {/* Upload error */}
+      {uploadErr&&(
+        <div style={{background:"#fff1f2",border:"1.5px solid #fecdd3",borderRadius:12,padding:"14px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"flex-start"}}>
+          <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
+          <div>
+            <div style={{fontWeight:700,color:"#be123c",fontSize:13,marginBottom:4}}>{uploadErr}</div>
+            <div style={{fontSize:12,color:"#9f1239"}}>→ Dans Supabase : <strong>Storage → New bucket → Nom : <code>documents</code> → Public : ON</strong></div>
+          </div>
+          <button onClick={()=>setUploadErr("")} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#f87171",flexShrink:0}}>×</button>
+        </div>
+      )}
 
       {/* Modal catégorie */}
       {pendingFile&&(
@@ -1341,7 +1408,9 @@ function DocsPage() {
             </select>
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setPendingFile(null)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid #e5e7eb",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
-              <button onClick={confirmUpload} style={{flex:2,padding:"9px",background:"var(--indigo-grad)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"white"}}>⬆ Importer</button>
+              <button onClick={confirmUpload} disabled={uploading} style={{flex:2,padding:"9px",background:"var(--indigo-grad)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:uploading?.6:1}}>
+                {uploading?"⏳ Upload en cours…":"⬆ Importer sur Supabase"}
+              </button>
             </div>
           </div>
         </div>
@@ -1424,8 +1493,8 @@ function DocsPage() {
             <div style={{fontWeight:800,fontSize:16,color:"var(--t1)",marginBottom:8}}>Supprimer ce document ?</div>
             <div style={{color:"var(--t3)",fontSize:13,marginBottom:22}}>Cette action est irréversible.</div>
             <div style={{display:"flex",gap:10,justifyContent:"center"}}>
-              <button onClick={()=>setDeleteId(null)} style={{padding:"9px 22px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
-              <button onClick={deleteDoc} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14}}>Supprimer</button>
+              <button onClick={()=>setDeleteId(null)} disabled={deleting} style={{padding:"9px 22px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+              <button onClick={deleteDoc} disabled={deleting} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14,opacity:deleting?.6:1}}>{deleting?"Suppression…":"Supprimer"}</button>
             </div>
           </div>
         </div>
@@ -1874,42 +1943,42 @@ function Contacts() {
   const [showAdd,setShowAdd]=useState(false);
   const [editContact,setEditContact]=useState(null);
   const [deleteId,setDeleteId]=useState(null);
+  const [loading,setLoading]=useState(true);
 
-  function load(){
+  async function load(){
     try{
-      const stored=localStorage.getItem(LS_KEY);
-      if(stored){setContacts(JSON.parse(stored));return;}
-    }catch(e){}
-    const defaults=[
-      {id:1,prenom:"Bernadette",nom:"VANDENBERGHE",email:"contact@chtis-en-maine.fr",tel:"+33 6 80 08 78 28",organisation:"Sarthe",notes:"Présidente de l'association"},
-      {id:2,prenom:"Marie-Geneviève",nom:"HOGU",email:"",tel:"",organisation:"Sarthe",notes:"Secrétaire"},
-      {id:3,prenom:"Gérard",nom:"LIGAUD",email:"",tel:"",organisation:"Sarthe",notes:"Trésorier"},
-    ];
-    setContacts(defaults);
-    localStorage.setItem(LS_KEY,JSON.stringify(defaults));
+      const {data,error}=await sb.from("contacts").select("*").order("id",{ascending:true});
+      if(error) throw error;
+      setContacts(data||[]);
+    }catch(e){
+      try{const s=localStorage.getItem(LS_KEY);if(s){setContacts(JSON.parse(s));}}catch(e2){}
+    }
+    setLoading(false);
   }
 
-  function persist(list){
-    setContacts(list);
-    localStorage.setItem(LS_KEY,JSON.stringify(list));
-    sb.from("contacts").upsert(list).then(()=>{}).catch(()=>{});
-  }
-
-  function addContact(form){
+  async function addContact(form){
     const newC={...form,id:Date.now()};
-    persist([...contacts,newC]);
+    try{
+      await sb.from("contacts").insert([newC]);
+      setContacts(prev=>[...prev,newC]);
+    }catch(e){console.error(e);}
     setShowAdd(false);
   }
 
-  function updateContact(form){
-    persist(contacts.map(c=>c.id===editContact.id?{...form,id:c.id}:c));
+  async function updateContact(form){
+    const updated={...form,id:editContact.id};
+    try{
+      await sb.from("contacts").update(updated).eq("id",editContact.id);
+      setContacts(prev=>prev.map(c=>c.id===editContact.id?updated:c));
+    }catch(e){console.error(e);}
     setEditContact(null);
   }
 
-  function deleteContact(){
-    const list=contacts.filter(c=>c.id!==deleteId);
-    persist(list);
-    sb.from("contacts").delete().eq("id",deleteId).then(()=>{}).catch(()=>{});
+  async function deleteContact(){
+    try{
+      await sb.from("contacts").delete().eq("id",deleteId);
+      setContacts(prev=>prev.filter(c=>c.id!==deleteId));
+    }catch(e){console.error(e);}
     setDeleteId(null);
   }
 
@@ -1919,6 +1988,8 @@ function Contacts() {
     const q=search.toLowerCase();
     return !q||`${c.prenom} ${c.nom} ${c.email} ${c.organisation}`.toLowerCase().includes(q);
   });
+
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0",color:"var(--t4)"}}>Chargement des contacts…</div>;
 
   return (
     <div>
@@ -2242,12 +2313,40 @@ function EventsPage({members, onSend}){
   const [deleteId,setDeleteId]=useState(null);
   const [detailEvt,setDetailEvt]=useState(null);
 
-  function load(){try{const s=localStorage.getItem(EVT_LS);if(s){setEvents(JSON.parse(s));return;}}catch(e){}setEvents(EVT_STATIC);localStorage.setItem(EVT_LS,JSON.stringify(EVT_STATIC));}
-  function save(list){setEvents(list);localStorage.setItem(EVT_LS,JSON.stringify(list));}
+  const [loadingEvts,setLoadingEvts]=useState(true);
+
+  async function load(){
+    setLoadingEvts(true);
+    try{
+      const {data,error}=await sb.from("evenements").select("*").order("date",{ascending:true});
+      if(!error&&data){ setEvents(data.map(e=>({...e,participants:e.participants||[]}))); setLoadingEvts(false); return; }
+    }catch(e){}
+    try{const s=localStorage.getItem(EVT_LS);if(s){setEvents(JSON.parse(s));setLoadingEvts(false);return;}}catch(e){}
+    setEvents(EVT_STATIC);
+    setLoadingEvts(false);
+  }
+
   React.useEffect(()=>{load();},[]);
-  function addEvent(form){save([...events,{...form,id:"ev"+Date.now()}]);setShowModal(false);}
-  function editEvent(form){save(events.map(e=>e.id===editEvt.id?{...form,id:e.id}:e));setEditEvt(null);}
-  function deleteEvent(){save(events.filter(e=>e.id!==deleteId));setDeleteId(null);}
+
+  async function addEvent(form){
+    const ev={...form,id:"ev"+Date.now(),participants:form.participants||[]};
+    try{ await sb.from("evenements").insert([ev]); }catch(e){}
+    setEvents(prev=>[...prev,ev]);
+    setShowModal(false);
+  }
+
+  async function editEvent(form){
+    const ev={...form,id:editEvt.id,participants:form.participants||[]};
+    try{ await sb.from("evenements").update(ev).eq("id",ev.id); }catch(e){}
+    setEvents(prev=>prev.map(e=>e.id===ev.id?ev:e));
+    setEditEvt(null);
+  }
+
+  async function deleteEvent(){
+    try{ await sb.from("evenements").delete().eq("id",deleteId); }catch(e){}
+    setEvents(prev=>prev.filter(e=>e.id!==deleteId));
+    setDeleteId(null);
+  }
 
   const today=new Date().toISOString().split("T")[0];
   const sorted=[...events].sort((a,b)=>a.date.localeCompare(b.date));
@@ -2539,29 +2638,113 @@ function EventsPage({members, onSend}){
   );
 }
 
+/* ── CHANGE PASSWORD MODAL ── */
+function ChangePasswordModal({ admin, onSave, forced, onClose }) {
+  const [newPass, setNewPass] = React.useState("");
+  const [confirm, setConfirm] = React.useState("");
+  const [show, setShow] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [done, setDone] = React.useState(false);
+
+  function handleGenerate(){
+    const p = generatePassword();
+    setNewPass(p); setConfirm(p); setShow(true); setErr("");
+  }
+
+  function handleSave(){
+    if(newPass.length < 6){ setErr("6 caractères minimum"); return; }
+    if(newPass !== confirm){ setErr("Les mots de passe ne correspondent pas"); return; }
+    setDone(true);
+    setTimeout(()=>onSave(newPass), 800);
+  }
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:"var(--card)",borderRadius:24,width:"100%",maxWidth:440,padding:36,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}}>
+        {/* Icon */}
+        <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:24}}>🔐</div>
+
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:20,fontWeight:800,color:"var(--t1)",marginBottom:8}}>
+            {forced ? "Bienvenue ! Changez votre mot de passe" : "Changer mon mot de passe"}
+          </div>
+          {forced && <div style={{fontSize:13,color:"var(--t4)",lineHeight:1.6}}>Pour votre sécurité, vous devez définir un nouveau mot de passe personnel avant d'accéder au tableau de bord.</div>}
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div className="clabel">Nouveau mot de passe</div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{position:"relative",flex:1}}>
+                <input className="ci" type={show?"text":"password"} value={newPass} onChange={e=>{setNewPass(e.target.value);setErr("");}}
+                  style={{paddingRight:64}} placeholder="••••••••" autoFocus/>
+                <button type="button" onClick={()=>setShow(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:12}}>{show?"Cacher":"Voir"}</button>
+              </div>
+              <button type="button" onClick={handleGenerate} style={{padding:"9px 12px",background:"#f5f3ff",color:"#7c3aed",border:"1.5px solid #c4b5fd",borderRadius:10,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>🔀 Générer</button>
+            </div>
+          </div>
+          <div>
+            <div className="clabel">Confirmer le nouveau mot de passe</div>
+            <input className="ci" type={show?"text":"password"} value={confirm} onChange={e=>{setConfirm(e.target.value);setErr("");}} placeholder="••••••••"/>
+          </div>
+          {err && <div style={{fontSize:12,color:"#ef4444",fontWeight:600,background:"#fff1f2",padding:"8px 12px",borderRadius:8}}>{err}</div>}
+
+          <div style={{display:"flex",gap:10,marginTop:4}}>
+            {!forced && onClose && <button onClick={onClose} style={{flex:1,padding:"11px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:12,fontWeight:600,fontSize:13,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>}
+            <button onClick={handleSave} disabled={done} style={{flex:2,padding:"11px",background:done?"#10b981":"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:13,cursor:done?"default":"pointer",transition:"background .3s"}}>
+              {done ? "✅ Mot de passe mis à jour !" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── SETTINGS / ADMINS PAGE ── */
 function SettingsPage({ currentAdmin, onSend, autoOpen }) {
-  const [admins, setAdmins] = React.useState(()=>JSON.parse(localStorage.getItem(ADMINS_LS)||"[]"));
+  const [admins, setAdmins] = React.useState([]);
+  const [loadingAdmins, setLoadingAdmins] = React.useState(true);
   const [showModal, setShowModal] = React.useState(!!autoOpen);
-  const [editing, setEditing] = React.useState(null); // null = add, obj = edit
+  const [editing, setEditing] = React.useState(null);
   const [delTarget, setDelTarget] = React.useState(null);
 
-  function save(admin){
-    let updated;
+  async function loadAdmins(){
+    setLoadingAdmins(true);
+    try{
+      const {data,error}=await sb.from("admins").select("*").order("created_at",{ascending:true});
+      if(!error){ setAdmins(data||[]); localStorage.setItem(ADMINS_LS,JSON.stringify(data||[])); }
+      else { setAdmins(JSON.parse(localStorage.getItem(ADMINS_LS)||"[]")); }
+    }catch(e){ setAdmins(JSON.parse(localStorage.getItem(ADMINS_LS)||"[]")); }
+    setLoadingAdmins(false);
+  }
+
+  React.useEffect(()=>{ loadAdmins(); },[]);
+
+  async function save(admin){
+    const row={
+      id: admin.id||(Date.now()+""),
+      prenom: admin.prenom, nom: admin.nom, email: admin.email,
+      password: admin.password, role: admin.role||"Administrateur",
+      permissions: admin.permissions||{},
+      must_change_password: admin.mustChangePassword!==false
+    };
     if(editing){
-      updated = admins.map(a=>a.id===admin.id?admin:a);
+      try{ await sb.from("admins").update(row).eq("id",row.id); }catch(e){}
+      const updated=admins.map(a=>a.id===row.id?row:a);
+      setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
     } else {
-      updated = [...admins, {...admin, id: Date.now()+""}];
+      try{ await sb.from("admins").insert([row]); }catch(e){}
+      const updated=[...admins,row];
+      setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
     }
-    localStorage.setItem(ADMINS_LS, JSON.stringify(updated));
-    setAdmins(updated);
     setShowModal(false); setEditing(null);
   }
 
-  function remove(id){
-    const updated = admins.filter(a=>a.id!==id);
-    localStorage.setItem(ADMINS_LS, JSON.stringify(updated));
-    setAdmins(updated);
+  async function remove(id){
+    try{ await sb.from("admins").delete().eq("id",id); }catch(e){}
+    const updated=admins.filter(a=>a.id!==id);
+    setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
     setDelTarget(null);
   }
 
@@ -2596,7 +2779,7 @@ function SettingsPage({ currentAdmin, onSend, autoOpen }) {
       </div>
 
       {/* Secondary admins */}
-      <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>Autres administrateurs ({admins.length})</div>
+      <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>Autres administrateurs ({loadingAdmins?"…":admins.length})</div>
 
       {admins.length===0 ? (
         <div className="card" style={{padding:"48px 24px",textAlign:"center"}}>
@@ -2689,6 +2872,12 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
   const [errors, setErrors] = React.useState({});
   const [showPass, setShowPass] = React.useState(false);
 
+  function handleGenerate(){
+    const p = generatePassword();
+    setForm(f=>({...f, password:p, confirm:p}));
+    setShowPass(true);
+  }
+
   function upd(k,v){ setForm(f=>({...f,[k]:v})); }
 
   function applyPreset(fn){ setForm(f=>({...f, permissions: fn()})); }
@@ -2726,6 +2915,7 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
     if(!validate()) return;
     const {confirm, ...data} = form;
     if(!data.password && admin) data.password = admin.password;
+    if(!admin) data.mustChangePassword = true; // force password change on first login
 
     // Send welcome email FIRST (before modal closes), only for new admins
     if(!admin && onSend && form.email.includes("@")){
@@ -2778,19 +2968,23 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
                   {ROLES.map(r=><option key={r}>{r}</option>)}
                 </select>
               </div>
-              <div>
+              <div style={{gridColumn:"1/-1"}}>
                 <div className="clabel">{admin?"Nouveau mot de passe":"Mot de passe *"}</div>
-                <div style={{position:"relative"}}>
-                  <input className="ci" type={showPass?"text":"password"} value={form.password} onChange={e=>upd("password",e.target.value)} style={{paddingRight:40,...(errors.password?{borderColor:"#ef4444"}:{})}} placeholder={admin?"Laisser vide pour ne pas changer":"••••••••"}/>
-                  <button type="button" onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:13}}>{showPass?"Cacher":"Voir"}</button>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div style={{position:"relative",flex:1}}>
+                    <input className="ci" type={showPass?"text":"password"} value={form.password} onChange={e=>upd("password",e.target.value)} style={{paddingRight:70,...(errors.password?{borderColor:"#ef4444"}:{})}} placeholder={admin?"Laisser vide pour ne pas changer":"••••••••"}/>
+                    <button type="button" onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:12}}>{showPass?"Cacher":"Voir"}</button>
+                  </div>
+                  {!admin && <button type="button" onClick={handleGenerate} style={{padding:"9px 14px",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:10,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>🔀 Générer</button>}
                 </div>
                 {errors.password&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.password}</div>}
+                {!admin&&<div style={{fontSize:11,color:"#6b7280",marginTop:3}}>Le mot de passe sera envoyé par email. L'admin devra le changer à sa 1ère connexion.</div>}
               </div>
-              <div>
+              {form.password&&<div style={{gridColumn:"1/-1"}}>
                 <div className="clabel">Confirmer le mot de passe</div>
                 <input className="ci" type={showPass?"text":"password"} value={form.confirm} onChange={e=>upd("confirm",e.target.value)} style={errors.confirm?{borderColor:"#ef4444"}:{}}/>
                 {errors.confirm&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.confirm}</div>}
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -2854,7 +3048,6 @@ function AdminModal({ admin, onSave, onClose, onSend }) {
 
 /* ── MESSAGES PAGE ── */
 function MessagesPage() {
-  const MSG_LS = "chtis_messages";
   const SOURCE_LABELS = {
     membre:      {label:"Membre",      color:"#2563eb", bg:"#eff6ff"},
     broadcast:   {label:"Actualités",  color:"#7c3aed", bg:"#f5f3ff"},
@@ -2863,17 +3056,22 @@ function MessagesPage() {
     admin:       {label:"Admin",       color:"#7c3aed", bg:"#f5f3ff"},
   };
 
-  const [logs, setLogs] = React.useState(()=>JSON.parse(localStorage.getItem(MSG_LS)||"[]"));
+  const [logs, setLogs] = React.useState([]);
+  const [loadingLogs, setLoadingLogs] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [filterSrc, setFilterSrc] = React.useState("tous");
   const [detail, setDetail] = React.useState(null);
 
-  React.useEffect(()=>{
-    const refresh = ()=> setLogs(JSON.parse(localStorage.getItem(MSG_LS)||"[]"));
-    window.addEventListener("storage", refresh);
-    const id = setInterval(refresh, 3000);
-    return ()=>{ window.removeEventListener("storage", refresh); clearInterval(id); };
-  },[]);
+  async function loadLogs(){
+    setLoadingLogs(true);
+    try{
+      const {data,error}=await sb.from("messages_log").select("*").order("date",{ascending:false}).limit(500);
+      if(!error) setLogs(data||[]);
+    }catch(e){}
+    setLoadingLogs(false);
+  }
+
+  React.useEffect(()=>{ loadLogs(); },[]);
 
   const filtered = logs.filter(m=>{
     const q = search.toLowerCase();
@@ -2891,9 +3089,9 @@ function MessagesPage() {
 
   function srcStyle(src){ return SOURCE_LABELS[src]||{label:src||"?",color:"#6b7280",bg:"#f3f4f6"}; }
 
-  function handleClear(){
+  async function handleClear(){
     if(!window.confirm("Effacer tout l'historique des messages ?")) return;
-    localStorage.removeItem(MSG_LS);
+    try{ await sb.from("messages_log").delete().neq("id",""); }catch(e){}
     setLogs([]);
   }
 
@@ -2903,7 +3101,7 @@ function MessagesPage() {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
           <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Historique des messages</div>
-          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{logs.length} email{logs.length!==1?"s":""} envoyé{logs.length!==1?"s":""} depuis le site</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{loadingLogs?"Chargement…":`${logs.length} email${logs.length!==1?"s":""} envoyé${logs.length!==1?"s":""} depuis le site`}</div>
         </div>
         {logs.length>0&&<button onClick={handleClear} style={{padding:"8px 16px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer"}}>Effacer l'historique</button>}
       </div>
@@ -3153,6 +3351,7 @@ function DeleteModal({ member, onConfirm, onClose }) {
 function App() {
   const [in_,setIn]=useState(false);
   const [currentAdmin,setCurrentAdmin]=useState(null);
+  const [showChangePass,setShowChangePass]=useState(false);
   const [page,setPage]=useState("dashboard");
   const [sel,setSel]=useState(null);
   const [members,setMembers]=useState([]);
@@ -3167,7 +3366,25 @@ function App() {
     return currentAdmin.permissions?.[section]?.voir !== false;
   }
 
-  if (!in_) return <Login onLogin={(admin)=>{setCurrentAdmin(admin);setIn(true);loadMembers();}} />;
+  function handleLogin(admin){
+    setCurrentAdmin(admin);
+    setIn(true);
+    loadMembers();
+    if(admin && !admin.isSuperAdmin && admin.mustChangePassword) setShowChangePass(true);
+  }
+
+  async function handlePasswordChanged(newPass){
+    try{
+      await sb.from("admins").update({password:newPass,must_change_password:false}).eq("id",currentAdmin.id);
+    }catch(e){}
+    const admins=JSON.parse(localStorage.getItem(ADMINS_LS)||"[]");
+    const updated=admins.map(a=>a.id===currentAdmin.id?{...a,password:newPass,mustChangePassword:false}:a);
+    localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
+    setCurrentAdmin(a=>({...a,password:newPass,mustChangePassword:false}));
+    setShowChangePass(false);
+  }
+
+  if (!in_) return <Login onLogin={handleLogin} />;
   function go(p){setPage(p);setSel(null);}
   const [bc,title]=PAGES[page]||["",""];
 
@@ -3229,18 +3446,14 @@ function App() {
   const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
 
   // ── Message log ──
-  const MSG_LOG_LS = "chtis_messages";
   function logMessage({to, prenom, nom, subject, message, source}){
-    try{
-      const prev = JSON.parse(localStorage.getItem(MSG_LOG_LS)||"[]");
-      prev.unshift({
-        id: Date.now() + Math.random(),
-        to, prenom:prenom||"", nom:nom||to,
-        subject, message, source,
-        date: new Date().toISOString()
-      });
-      localStorage.setItem(MSG_LOG_LS, JSON.stringify(prev.slice(0,500)));
-    }catch(e){}
+    const entry={
+      id:"msg"+Date.now()+Math.random().toString(36).slice(2),
+      to, prenom:prenom||"", nom:nom||to,
+      subject, message, source,
+      date:new Date().toISOString()
+    };
+    sb.from("messages_log").insert([entry]).then(()=>{}).catch(()=>{});
   }
 
   async function sendEmail(to, prenom, nom, role, type){
@@ -3408,7 +3621,7 @@ function App() {
 
   return (
     <div className="shell">
-      <Sidebar active={page} set={go} logout={()=>setIn(false)} currentAdmin={currentAdmin} canAccess={canAccess} />
+      <Sidebar active={page} set={go} logout={()=>setIn(false)} currentAdmin={currentAdmin} canAccess={canAccess} onChangePass={()=>setShowChangePass(true)} />
       <div className="main">
         <Topbar breadcrumb={bc} title={title} currentAdmin={currentAdmin} action={page==="members"&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
         <div className="page">{render()}</div>
@@ -3417,6 +3630,7 @@ function App() {
       {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
       {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
       {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
+      {showChangePass&&<ChangePasswordModal admin={currentAdmin} onSave={handlePasswordChanged} forced={currentAdmin?.mustChangePassword} onClose={()=>setShowChangePass(false)} />}
     </div>
   );
 }
