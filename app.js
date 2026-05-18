@@ -1,0 +1,3689 @@
+const { useState, useMemo, useEffect } = React;
+
+// SUPABASE CONFIG
+const SUPABASE_URL = "https://sdqdaqthfjlzwxlnoixp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5LUAwEZv_cK8n0FskHPxVw_6XbrqoV2";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// GLOBAL PDF GENERATOR
+function generateBeautifulPDF(prenom, nom, email, montant, objet, date, numFacture, statut){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const mt=parseFloat(montant)||25;
+  const num=numFacture||("FACT-"+new Date().getFullYear()+"-"+String(Math.floor(Math.random()*9000)+1000));
+  const dateStr=date?new Date(date).toLocaleDateString("fr-FR"):new Date().toLocaleDateString("fr-FR");
+  // Background
+  doc.setFillColor(248,247,255); doc.rect(0,0,210,297,"F");
+  // Left accent bar
+  doc.setFillColor(99,102,241); doc.rect(0,0,8,297,"F");
+  // Header block
+  doc.setFillColor(99,102,241); doc.roundedRect(14,14,182,50,4,4,"F");
+  // Decoration circles
+  doc.setDrawColor(255,255,255); doc.setLineWidth(0.3);
+  doc.circle(178,22,28,"S"); doc.circle(168,48,16,"S");
+  // Association name
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(20); doc.setFont("helvetica","bold");
+  doc.text("Ch'tis en Maine",22,32);
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.setTextColor(200,200,255);
+  doc.text("Association loi 1901 - Sarthe, Pays de la Loire",22,40);
+  doc.text("contact@chtis-en-maine.fr",22,48);
+  // FACTURE title
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(26); doc.setFont("helvetica","bold");
+  doc.text("FACTURE",192,34,{align:"right"});
+  doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.setTextColor(200,200,255);
+  doc.text("N° "+num,192,43,{align:"right"});
+  doc.text("Date : "+dateStr,192,51,{align:"right"});
+  // Card Facture a
+  doc.setFillColor(255,255,255); doc.roundedRect(14,74,88,42,3,3,"F");
+  doc.setDrawColor(220,215,255); doc.setLineWidth(0.5); doc.roundedRect(14,74,88,42,3,3,"S");
+  doc.setFillColor(99,102,241); doc.roundedRect(14,74,88,6,3,3,"F"); doc.rect(14,77,88,3,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
+  doc.text("FACTURE A",22,79);
+  doc.setTextColor(30,30,50); doc.setFontSize(12); doc.setFont("helvetica","bold");
+  doc.text((prenom||"")+" "+(nom||""),22,91);
+  doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,130);
+  if(email) doc.text(email,22,99);
+  // Card Emis par
+  doc.setFillColor(255,255,255); doc.roundedRect(108,74,88,42,3,3,"F");
+  doc.setDrawColor(220,215,255); doc.roundedRect(108,74,88,42,3,3,"S");
+  doc.setFillColor(139,92,246); doc.roundedRect(108,74,88,6,3,3,"F"); doc.rect(108,77,88,3,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
+  doc.text("EMIS PAR",116,79);
+  doc.setTextColor(30,30,50); doc.setFontSize(12); doc.setFont("helvetica","bold");
+  doc.text("Ch'tis en Maine",116,91);
+  doc.setFontSize(9); doc.setFont("helvetica","normal"); doc.setTextColor(100,100,130);
+  doc.text("contact@chtis-en-maine.fr",116,99);
+  doc.text("Sarthe, Pays de la Loire",116,107);
+  // Table header
+  doc.setFillColor(99,102,241); doc.roundedRect(14,126,182,10,2,2,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont("helvetica","bold");
+  doc.text("DESCRIPTION",22,133); doc.text("QTE",130,133,{align:"center"}); doc.text("MONTANT",192,133,{align:"right"});
+  // Table row
+  doc.setFillColor(255,255,255); doc.rect(14,136,182,16,"F");
+  doc.setDrawColor(220,215,255); doc.setLineWidth(0.3); doc.rect(14,136,182,16,"S");
+  doc.setTextColor(30,30,50); doc.setFontSize(10); doc.setFont("helvetica","normal");
+  doc.text(objet||"Cotisation",22,147); doc.text("1",130,147,{align:"center"});
+  doc.setFont("helvetica","bold"); doc.text(mt.toFixed(2)+" EUR",192,147,{align:"right"});
+  // Summary box
+  doc.setFillColor(245,243,255); doc.roundedRect(108,162,88,28,3,3,"F");
+  doc.setDrawColor(215,210,255); doc.roundedRect(108,162,88,28,3,3,"S");
+  doc.setTextColor(100,100,130); doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.text("Sous-total",116,172); doc.text(mt.toFixed(2)+" EUR",192,172,{align:"right"});
+  doc.text("TVA (0%)",116,181); doc.text("0,00 EUR",192,181,{align:"right"});
+  // Total box
+  doc.setFillColor(99,102,241); doc.roundedRect(108,196,88,26,3,3,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont("helvetica","normal");
+  doc.text("TOTAL TTC",116,206);
+  doc.setFontSize(15); doc.setFont("helvetica","bold");
+  doc.text(mt.toFixed(2)+" EUR",192,214,{align:"right"});
+  // Badge status dynamique
+  const st=statut||"en attente";
+  if(st==="payée"){
+    doc.setFillColor(236,253,245); doc.roundedRect(14,196,58,14,3,3,"F");
+    doc.setDrawColor(110,231,183); doc.roundedRect(14,196,58,14,3,3,"S");
+    doc.setTextColor(6,95,70); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("✓ PAYÉE",43,205,{align:"center"});
+  } else if(st==="impayée"){
+    doc.setFillColor(254,242,242); doc.roundedRect(14,196,58,14,3,3,"F");
+    doc.setDrawColor(252,165,165); doc.roundedRect(14,196,58,14,3,3,"S");
+    doc.setTextColor(153,27,27); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("IMPAYÉE",43,205,{align:"center"});
+  } else {
+    doc.setFillColor(255,251,235); doc.roundedRect(14,196,78,14,3,3,"F");
+    doc.setDrawColor(253,211,77); doc.roundedRect(14,196,78,14,3,3,"S");
+    doc.setTextColor(160,100,0); doc.setFontSize(7); doc.setFont("helvetica","bold");
+    doc.text("EN ATTENTE DE PAIEMENT",57,205,{align:"center"});
+  }
+  // Footer
+  doc.setFillColor(99,102,241); doc.rect(0,272,210,25,"F");
+  doc.setFillColor(139,92,246); doc.rect(0,272,8,25,"F");
+  doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont("helvetica","bold");
+  doc.text("Ch'tis en Maine",22,281);
+  doc.setFont("helvetica","normal"); doc.setTextColor(200,200,255);
+  doc.text("contact@chtis-en-maine.fr  |  Sarthe, Pays de la Loire  |  Association loi 1901",22,289);
+  doc.setTextColor(255,255,255); doc.setFontSize(8);
+  doc.text("Merci de votre confiance !",192,285,{align:"right"});
+  doc.save("Facture-"+num+".pdf");
+}
+
+const ini = m => ((m.prenom||"?")[0] + (m.nom||"?")[0]).toUpperCase();
+const fmtDate = d => { try{ return new Date(d).toLocaleDateString("fr-FR"); }catch(e){ return "-"; } };
+const avGradSafe = id => AV_GRADS[(Math.abs(parseInt(id)||0)) % AV_GRADS.length];
+
+// Color cycle for avatars
+const AV_GRADS = [
+  "linear-gradient(135deg,#4FD1C5,#2C7A7B)",
+  "linear-gradient(135deg,#63B3ED,#2B6CB0)",
+  "linear-gradient(135deg,#F6AD55,#C05621)",
+  "linear-gradient(135deg,#68D391,#276749)",
+  "linear-gradient(135deg,#B794F4,#553C9A)",
+  "linear-gradient(135deg,#FC8181,#C53030)",
+];
+const avGrad = id => AV_GRADS[(Math.abs(parseInt(id)||0)) % AV_GRADS.length];
+
+function SBadge({ s }) {
+  if (s === "payée")      return <span className="badge bg">Payée</span>;
+  if (s === "en attente") return <span className="badge bo">En attente</span>;
+  return <span className="badge br">Impayée</span>;
+}
+function MBadge({ s }) {
+  return s === "actif" ? <span className="badge bg">Actif</span> : <span className="badge bgr">Inactif</span>;
+}
+
+/* SVG ICONS */
+const Icon = ({ name, size = 16, color = "currentColor" }) => {
+  const s = { width: size, height: size, fill: color, flexShrink: 0 };
+  const icons = {
+    home:     <svg viewBox="0 0 24 24" style={s}><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>,
+    users:    <svg viewBox="0 0 24 24" style={s}><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>,
+    contacts: <svg viewBox="0 0 24 24" style={s}><path d="M20 0H4v2h16V0zm0 4H4v2h16V4zM4 22h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2zm8-12.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5S9.5 13.38 9.5 12s1.12-2.5 2.5-2.5zM7 19c0-2.21 2.24-4 5-4s5 1.79 5 4H7z"/></svg>,
+    doc:      <svg viewBox="0 0 24 24" style={s}><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>,
+    invoice:  <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>,
+    mail:     <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>,
+    calendar: <svg viewBox="0 0 24 24" style={s}><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>,
+    chat:     <svg viewBox="0 0 24 24" style={s}><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>,
+    chart:    <svg viewBox="0 0 24 24" style={s}><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>,
+    settings: <svg viewBox="0 0 24 24" style={s}><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>,
+    search:   <svg viewBox="0 0 24 24" style={s}><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>,
+    bell:     <svg viewBox="0 0 24 24" style={s}><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>,
+    phone:    <svg viewBox="0 0 24 24" style={s}><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>,
+    location: <svg viewBox="0 0 24 24" style={s}><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>,
+    date:     <svg viewBox="0 0 24 24" style={s}><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>,
+    card:     <svg viewBox="0 0 24 24" style={s}><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>,
+    user:     <svg viewBox="0 0 24 24" style={s}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>,
+    edit:     <svg viewBox="0 0 24 24" style={s}><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>,
+    trash:    <svg viewBox="0 0 24 24" style={s}><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>,
+    plus:     <svg viewBox="0 0 24 24" style={s}><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>,
+    logout:   <svg viewBox="0 0 24 24" style={s}><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>,
+  };
+  return icons[name] || null;
+};
+
+/* ADMINS */
+const ADMINS_LS = "chtis_admins";
+const PERM_SECTIONS = [
+  {key:"membres",   label:"Membres"},
+  {key:"contacts",  label:"Contacts"},
+  {key:"documents", label:"Documents"},
+  {key:"invoices",  label:"Factures"},
+  {key:"email",     label:"Actualités / Emails"},
+  {key:"events",    label:"Événements"},
+  {key:"messages",  label:"Messages"},
+];
+const PERM_ACTIONS = [
+  {key:"voir",      label:"Consulter"},
+  {key:"ajouter",   label:"Ajouter"},
+  {key:"modifier",  label:"Modifier"},
+  {key:"supprimer", label:"Supprimer"},
+];
+function defaultPerms(){ const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:false,ajouter:false,modifier:false,supprimer:false};}); return p; }
+function fullPerms(){    const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:true, ajouter:true, modifier:true, supprimer:true};}); return p; }
+function viewOnlyPerms(){const p={}; PERM_SECTIONS.forEach(s=>{p[s.key]={voir:true, ajouter:false,modifier:false,supprimer:false};}); return p; }
+function generatePassword(){
+  const up="ABCDEFGHJKMNPQRSTUVWXYZ", lo="abcdefghjkmnpqrstuvwxyz", nu="23456789", sp="!@#$";
+  const all=up+lo+nu+sp;
+  const pick=s=>s[Math.floor(Math.random()*s.length)];
+  const base=Array.from({length:7},()=>pick(all));
+  return [pick(up),pick(nu),pick(sp),...base].sort(()=>Math.random()-.5).join("");
+}
+const SUPER_ADMIN = {id:"super",prenom:"Henri",nom:"Beaumont",email:"admin@chtis-en-maine.fr",role:"Super Administrateur",isSuperAdmin:true};
+
+/* LOGIN */
+const LOGIN_ATTEMPTS_KEY = "chtis_login_attempts";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 60;
+
+function getAttempts(){ try{ return JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY)||"{}"); }catch(e){ return {}; } }
+function recordFail(em){
+  const a=getAttempts();
+  const k=em.toLowerCase();
+  a[k]=(a[k]||{count:0});
+  a[k].count++;
+  a[k].last=Date.now();
+  localStorage.setItem(LOGIN_ATTEMPTS_KEY,JSON.stringify(a));
+  return a[k].count;
+}
+function clearAttempts(em){ const a=getAttempts(); delete a[em.toLowerCase()]; localStorage.setItem(LOGIN_ATTEMPTS_KEY,JSON.stringify(a)); }
+function isLocked(em){
+  const a=getAttempts()[em.toLowerCase()];
+  if(!a||a.count<MAX_ATTEMPTS) return 0;
+  const elapsed=Math.floor((Date.now()-a.last)/1000);
+  if(elapsed>=LOCKOUT_SECONDS){ clearAttempts(em); return 0; }
+  return LOCKOUT_SECONDS-elapsed;
+}
+
+function Login({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [err, setErr] = useState("");
+  const [logging, setLogging] = useState(false);
+  const [lockSec, setLockSec] = useState(0);
+
+  useEffect(()=>{
+    if(lockSec<=0) return;
+    const t=setInterval(()=>setLockSec(s=>{ if(s<=1){ clearInterval(t); return 0; } return s-1; }),1000);
+    return ()=>clearInterval(t);
+  },[lockSec]);
+
+  async function go(e) {
+    e.preventDefault();
+    const em = email.trim().toLowerCase();
+    const locked = isLocked(em);
+    if(locked){ setLockSec(locked); setErr(`Trop de tentatives. Réessayez dans ${locked}s.`); return; }
+    if(!em.includes("@")||!pass){ setErr("Remplissez tous les champs."); return; }
+    setLogging(true); setErr("");
+    if (em === "admin@chtis-en-maine.fr" && pass === "Cht1s@Admin2026!") { clearAttempts(em); onLogin(SUPER_ADMIN); return; }
+    try{
+      const {data,error}=await sb.from("admins").select("*").eq("email",em).single();
+      if(!error && data && data.password===pass){ clearAttempts(em); onLogin({...data,mustChangePassword:data.must_change_password}); return; }
+    }catch(e2){}
+    const admins=JSON.parse(localStorage.getItem(ADMINS_LS)||"[]");
+    const found=admins.find(a=>a.email===em&&a.password===pass);
+    if(found){ clearAttempts(em); onLogin(found); return; }
+    const attempts=recordFail(em);
+    const remaining=MAX_ATTEMPTS-attempts;
+    if(remaining<=0){ const sec=LOCKOUT_SECONDS; setLockSec(sec); setErr(`Compte bloqué ${LOCKOUT_SECONDS}s après ${MAX_ATTEMPTS} tentatives.`); }
+    else { setErr(`Identifiants incorrects. ${remaining} tentative${remaining>1?"s":""} restante${remaining>1?"s":""}.`); }
+    setLogging(false);
+  }
+
+  return (
+    <div className="lp">
+      <div className="lp-inner">
+        <div className="lp-blur" />
+        <div className="lc">
+          <div className="lb">
+            <div className="li">
+              <Icon name="users" size={28} color="white" />
+            </div>
+            <h1>Ch'tis en Maine</h1>
+            <p>Connexion à l'espace administrateur</p>
+          </div>
+          {err && <div className="lerr">{err}</div>}
+          <form onSubmit={go}>
+            <div className="fg">
+              <label className="fl">Adresse e-mail</label>
+              <input className="fi" type="email" placeholder="admin@chtis-en-maine.fr" value={email} onChange={e=>setEmail(e.target.value)} autoFocus />
+            </div>
+            <div className="fg">
+              <label className="fl">Mot de passe</label>
+              <input className="fi" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} />
+            </div>
+            <button className="lbtn" type="submit" disabled={logging||lockSec>0} style={{opacity:(logging||lockSec>0)?.6:1}}>
+              {logging?"Connexion…":lockSec>0?`Bloqué (${lockSec}s)`:"Se connecter"}
+            </button>
+          </form>
+          <div className="lfoot">© 2026 Ch'tis en Maine · Tous droits réservés</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* SIDEBAR */
+const NAVS = [
+  {id:"dashboard", icon:"home",     label:"Tableau de bord"},
+  {id:"members",   icon:"users",    label:"Membres"},
+  {id:"contacts",  icon:"contacts", label:"Contacts"},
+  {id:"documents", icon:"doc",      label:"Documents"},
+  {id:"invoices",  icon:"invoice",  label:"Factures", badge:3},
+  {id:"email",     icon:"mail",     label:"Actualités / Emails"},
+  {id:"events",    icon:"calendar", label:"Événements"},
+  {id:"messages",  icon:"chat",     label:"Messages"},
+  {id:"invoice-gen",icon:"invoice",  label:"Générateur de facture"},
+  {id:"add-member", icon:"users",    label:"Ajouter un membre"},
+  {id:"settings",  icon:"settings", label:"Paramètres"},
+];
+
+function Sidebar({ active, set, logout, currentAdmin, canAccess, onChangePass }) {
+  const MAIN_IDS  = ["dashboard","members","contacts","documents","invoices","email","events","messages"];
+  const TOOLS_IDS = ["invoice-gen"];
+  const ADMIN_IDS = ["settings"];
+
+  function navItem(n){
+    if(!["dashboard","settings","invoice-gen"].includes(n.id) && !canAccess(n.id)) return null;
+    return (
+      <div key={n.id} className={`ni ${active===n.id?"active":""}`} onClick={()=>set(n.id)}>
+        <div className="ni-ico"><Icon name={n.icon} size={15} color={active===n.id?"white":"#718096"}/></div>
+        {n.label}
+        {n.badge && <span className="ni-badge">{n.badge}</span>}
+      </div>
+    );
+  }
+
+  const adminName  = currentAdmin ? `${currentAdmin.prenom} ${currentAdmin.nom}` : "Henri Beaumont";
+  const adminRole  = currentAdmin?.role || "Administrateur";
+  const adminInits = currentAdmin ? (currentAdmin.prenom[0]+(currentAdmin.nom[0]||"")).toUpperCase() : "HB";
+
+  return (
+    <aside className="sb">
+      <div className="sb-top">
+        <div className="sb-logo">
+          <div className="sb-logo-mark"><Icon name="users" size={18} color="white"/></div>
+          <div>
+            <div className="sb-name">Ch'tis en Maine</div>
+            <div className="sb-sub">Espace administrateur</div>
+          </div>
+        </div>
+      </div>
+      <div className="sb-divider"/>
+      <nav className="sb-nav">
+        <div className="sb-section">Menu principal</div>
+        {NAVS.filter(n=>MAIN_IDS.includes(n.id)).map(navItem)}
+        <div className="sb-section" style={{marginTop:12}}>Outils</div>
+        {NAVS.filter(n=>TOOLS_IDS.includes(n.id)).map(navItem)}
+        {(!currentAdmin||currentAdmin.isSuperAdmin) && (<>
+          <div className="sb-section" style={{marginTop:12}}>Admin</div>
+          {NAVS.filter(n=>ADMIN_IDS.includes(n.id)).map(navItem)}
+          <div className={`ni ${active==="add-admin"?"active":""}`} onClick={()=>set("add-admin")}>
+            <div className="ni-ico"><Icon name="plus" size={15} color={active==="add-admin"?"white":"#718096"}/></div>
+            Ajouter un admin
+          </div>
+        </>)}
+      </nav>
+      <div className="sb-bot">
+        {currentAdmin && !currentAdmin.isSuperAdmin && (
+          <div onClick={onChangePass} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",margin:"0 8px 6px",borderRadius:10,cursor:"pointer",background:"rgba(102,126,234,.08)",border:"1px solid rgba(102,126,234,.15)"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(102,126,234,.15)"}
+            onMouseLeave={e=>e.currentTarget.style.background="rgba(102,126,234,.08)"}
+          >
+            <span style={{fontSize:14}}>🔐</span>
+            <span style={{fontSize:12,fontWeight:600,color:"#a78bfa"}}>Changer mon mot de passe</span>
+          </div>
+        )}
+        <div className="sb-user" onClick={logout}>
+          <div className="uav">{adminInits}</div>
+          <div style={{flex:1}}>
+            <div className="sb-uname">{adminName}</div>
+            <div className="sb-urole">{adminRole}</div>
+          </div>
+          <Icon name="logout" size={15} color="#A0AEC0"/>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* TOPBAR */
+function Topbar({ breadcrumb, title, action, currentAdmin }) {
+  const adminName  = currentAdmin ? `${currentAdmin.prenom} ${currentAdmin.nom}` : "Henri Beaumont";
+  const adminRole  = currentAdmin?.role || "Administrateur";
+  const adminInits = currentAdmin ? (currentAdmin.prenom[0]+(currentAdmin.nom[0]||"")).toUpperCase() : "HB";
+  return (
+    <div className="tb">
+      <div className="tb-left">
+        <div className="tb-page">{breadcrumb}</div>
+        <div className="tb-title">{title}</div>
+      </div>
+      <div className="tb-right">
+        <div className="tb-search">
+          <Icon name="search" size={14} color="#A0AEC0" />
+          <input placeholder="Rechercher…" />
+        </div>
+        <button className="tb-ico" title="Notifications">
+          <Icon name="bell" size={17} color="#718096" />
+          <span className="notif-dot" />
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:9}}>
+          <div style={{textAlign:"right"}}>
+            <div className="tb-uname">{adminName}</div>
+            <div className="tb-urole">{adminRole}</div>
+          </div>
+          <div className="tb-av">{adminInits}</div>
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+/* DASHBOARD */
+function Dashboard({ members, set }) {
+  const [docs,setDocs]=React.useState([]);
+  const [events,setEvents]=React.useState([]);
+  const [msgs,setMsgs]=React.useState([]);
+
+  React.useEffect(()=>{
+    sb.from("documents").select("id,name,cat,date,size,type,url").order("created_at",{ascending:false}).limit(100)
+      .then(({data})=>{ if(data) setDocs(data); });
+    sb.from("evenements").select("id,titre,date,heure,lieu,color,participants").order("date",{ascending:true})
+      .then(({data})=>{ if(data) setEvents(data.map(e=>({...e,participants:e.participants||[]}))); });
+    sb.from("messages_log").select("id,prenom,nom,to,subject,source,date").order("date",{ascending:false}).limit(100)
+      .then(({data})=>{ if(data) setMsgs(data); });
+  },[]);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const actifs    = members.filter(m=>m.statut==="actif").length;
+  const inactifs  = members.filter(m=>m.statut==="inactif").length;
+  const payes     = members.filter(m=>m.cotisation==="payée").length;
+  const attente   = members.filter(m=>m.cotisation==="en attente").length;
+  const impayes   = members.filter(m=>m.cotisation==="impayée").length;
+  const upcomingEvts = events.filter(e=>new Date(e.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const recentMembers = [...members].sort((a,b)=>new Date(b.joined)-new Date(a.joined)).slice(0,5);
+  const recentMsgs = msgs.slice(0,4);
+  const recentDocs = docs.slice(0,4);
+
+  const STATS = [
+    {label:"Membres actifs",    val:actifs,         icon:"user",     bg:"linear-gradient(127deg,#667eea,#764ba2)", sub:`${inactifs} inactif${inactifs>1?"s":""}`, page:"members"},
+    {label:"Documents",         val:docs.length,    icon:"doc",      bg:"linear-gradient(127deg,#4FD1C5,#2C7A7B)", sub:`${recentDocs.length} récents`, page:"documents"},
+    {label:"Événements à venir",val:upcomingEvts.length, icon:"calendar", bg:"linear-gradient(127deg,#f7971e,#ffd200)", sub:"planifiés", page:"events"},
+    {label:"Messages envoyés",  val:msgs.length,    icon:"mail",     bg:"linear-gradient(127deg,#f953c6,#b91d73)", sub:"depuis le site", page:"messages"},
+  ];
+
+  // Cotisation bar percentages
+  const total = members.length || 1;
+  const pctP = Math.round(payes/total*100);
+  const pctA = Math.round(attente/total*100);
+  const pctI = Math.round(impayes/total*100);
+
+  const SOURCE_COLORS = {membre:"#2563eb",broadcast:"#7c3aed","événement":"#0891b2",facture:"#d97706"};
+  const SOURCE_LABELS = {membre:"Membre",broadcast:"Actualités","événement":"Événement",facture:"Facture"};
+
+  const QUICK = [
+    {icon:"user",    label:"Membres",     page:"members",    bg:"#eff6ff", color:"#2563eb"},
+    {icon:"calendar",label:"Événements",  page:"events",     bg:"#ecfeff", color:"#0891b2"},
+    {icon:"mail",    label:"Actualités",  page:"email",      bg:"#f5f3ff", color:"#7c3aed"},
+    {icon:"doc",     label:"Documents",   page:"documents",  bg:"#f0fdf4", color:"#059669"},
+    {icon:"invoice", label:"Factures",    page:"invoices",   bg:"#fffbeb", color:"#d97706"},
+    {icon:"chat",    label:"Messages",    page:"messages",   bg:"#fdf2f8", color:"#be185d"},
+  ];
+
+  function relDay(iso){
+    const d=new Date(iso); d.setHours(0,0,0,0);
+    const diff=Math.round((d-today)/86400000);
+    if(diff===0) return "Aujourd'hui";
+    if(diff===1) return "Demain";
+    if(diff<7)   return `Dans ${diff}j`;
+    return new Date(iso).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  }
+
+  function docExt(name){ const p=name.lastIndexOf("."); return p>-1?name.slice(p+1).toUpperCase():"?"; }
+  const EXT_COLORS={PDF:{bg:"#fff1f2",color:"#be123c"},DOCX:{bg:"#eff6ff",color:"#1d4ed8"},XLSX:{bg:"#f0fdf4",color:"#166534"},PNG:{bg:"#fdf4ff",color:"#7e22ce"},JPG:{bg:"#fdf4ff",color:"#7e22ce"}};
+
+  return (
+    <div>
+      {/* ── Stat cards ── */}
+      <div className="stat-row">
+        {STATS.map(s=>(
+          <div key={s.label} className="sc" style={{background:s.bg,cursor:"pointer"}} onClick={()=>set(s.page)}>
+            <div className="sc-overlay"/><div className="sc-pattern"/><div className="sc-pattern2"/>
+            <div className="sc-label">{s.label}</div>
+            <div className="sc-val">{s.val}</div>
+            <div className="sc-trend">{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Row 1 : recent members + upcoming events + cotisation status ── */}
+      <div className="row" style={{alignItems:"start"}}>
+
+        {/* Derniers membres */}
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Derniers inscrits</div>
+              <span className="card-link" onClick={()=>set("members")}>Voir tous →</span>
+            </div>
+            {recentMembers.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>Aucun membre</div>
+              : recentMembers.map(m=>(
+                <div key={m.id} className="ri">
+                  <div className="mav" style={{background:avGradSafe(m.id)}}>{ini(m)}</div>
+                  <div className="ri-main">
+                    <div className="ri-name">{m.prenom} {m.nom}</div>
+                    <div className="ri-sub">{m.role||"Membre"}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    <div className="ri-date">{fmtDate(m.joined)}</div>
+                    <MBadge s={m.statut}/>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* Prochains événements */}
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Prochains événements</div>
+              <span className="card-link" onClick={()=>set("events")}>Voir tous →</span>
+            </div>
+            {upcomingEvts.length===0
+              ? <div style={{textAlign:"center",padding:"28px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📅</div>
+                  Aucun événement à venir
+                  <div style={{marginTop:12}}><span className="card-link" style={{fontSize:13}} onClick={()=>set("events")}>Créer un événement →</span></div>
+                </div>
+              : upcomingEvts.slice(0,4).map(e=>{
+                  const ec=e.color||"#667eea";
+                  return (
+                    <div key={e.id} className="ri" style={{alignItems:"center"}}>
+                      <div style={{width:42,minWidth:42,height:42,borderRadius:10,background:ec,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0}}>
+                        <div style={{fontSize:14,fontWeight:800,lineHeight:1}}>{new Date(e.date).getDate()}</div>
+                        <div style={{fontSize:9,fontWeight:600,opacity:.85,textTransform:"uppercase"}}>{new Date(e.date).toLocaleDateString("fr-FR",{month:"short"})}</div>
+                      </div>
+                      <div className="ri-main">
+                        <div className="ri-name">{e.titre}</div>
+                        <div className="ri-sub">{e.lieu||"Lieu non défini"} · {e.participants?.length||0} participant{(e.participants?.length||0)>1?"s":""}</div>
+                      </div>
+                      <div style={{fontSize:11,fontWeight:700,color:ec,background:ec+"18",padding:"3px 8px",borderRadius:20,whiteSpace:"nowrap"}}>{relDay(e.date)}</div>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        {/* Cotisations */}
+        <div className="col-right">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Cotisations</div>
+              <span className="card-link" onClick={()=>set("invoices")}>Voir factures →</span>
+            </div>
+
+            {/* Mini donut via SVG */}
+            {(()=>{
+              const r=42, cx=56, cy=56, circ=2*Math.PI*r;
+              const segs=[
+                {color:"#10b981", pct:pctP},
+                {color:"#f59e0b", pct:pctA},
+                {color:"#ef4444", pct:pctI},
+              ];
+              let offset=0;
+              const arcs=segs.map((s,i)=>{
+                const dash=(s.pct/100)*circ;
+                const gap=circ-dash;
+                const el=<circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth="16"
+                  strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset} style={{transition:"stroke-dasharray .5s"}}/>;
+                offset+=dash;
+                return el;
+              });
+              const totalMontant=members.filter(m=>m.cotisation==="payée").reduce((a,m)=>a+(parseFloat(m.montant)||25),0);
+              return (
+                <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+                  <svg width="112" height="112" style={{flexShrink:0,transform:"rotate(-90deg)"}}>
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bg)" strokeWidth="16"/>
+                    {members.length===0
+                      ? <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e5e7eb" strokeWidth="16"/>
+                      : arcs}
+                  </svg>
+                  <div>
+                    <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",lineHeight:1}}>{members.length}</div>
+                    <div style={{fontSize:11,color:"var(--t4)",marginBottom:8}}>adhérents</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#10b981"}}>{totalMontant} €</div>
+                    <div style={{fontSize:11,color:"var(--t4)"}}>collectés</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Barres */}
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[
+                {label:"Payées",     count:payes,   pct:pctP, color:"#10b981", bg:"#d1fae5"},
+                {label:"En attente", count:attente, pct:pctA, color:"#f59e0b", bg:"#fef3c7"},
+                {label:"Impayées",   count:impayes, pct:pctI, color:"#ef4444", bg:"#fee2e2"},
+              ].map(r=>(
+                <div key={r.label} style={{padding:"8px 10px",borderRadius:10,background:r.count>0?r.bg:"var(--bg)",cursor:r.count>0?"pointer":"default",transition:"opacity .15s"}}
+                  onClick={()=>r.count>0&&set("invoices")}
+                >
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <span style={{fontSize:12,fontWeight:600,color:r.count>0?r.color:"var(--t4)"}}>{r.label}</span>
+                    <span style={{fontSize:12,fontWeight:800,color:r.count>0?r.color:"var(--t4)"}}>{r.count} <span style={{fontWeight:500,opacity:.7}}>/ {members.length}</span></span>
+                  </div>
+                  <div style={{height:5,borderRadius:99,background:"rgba(0,0,0,.07)"}}>
+                    <div style={{height:"100%",borderRadius:99,background:r.color,width:(r.pct||0)+"%",minWidth:r.count>0?"6px":"0",transition:"width .6s"}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 2 : recent docs + recent messages + quick access ── */}
+      <div className="row" style={{alignItems:"start"}}>
+
+        {/* Documents récents */}
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Documents récents</div>
+              <span className="card-link" onClick={()=>set("documents")}>Voir tous →</span>
+            </div>
+            {recentDocs.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📂</div>
+                  Aucun document
+                  <div style={{marginTop:10}}><span className="card-link" style={{fontSize:13}} onClick={()=>set("documents")}>Ajouter un document →</span></div>
+                </div>
+              : recentDocs.map((d,i)=>{
+                  const ext=docExt(d.name);
+                  const ec=EXT_COLORS[ext]||{bg:"#f3f4f6",color:"#374151"};
+                  return (
+                    <div key={i} className="ri">
+                      <div style={{width:36,height:36,borderRadius:9,background:ec.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:10,fontWeight:800,color:ec.color}}>{ext}</div>
+                      <div className="ri-main">
+                        <div className="ri-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.name}</div>
+                        <div className="ri-sub">{d.category||"Autre"} · {d.size}</div>
+                      </div>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        {/* Messages récents */}
+        <div className="col">
+          <div className="card">
+            <div className="card-hd">
+              <div className="card-title">Messages récents</div>
+              <span className="card-link" onClick={()=>set("messages")}>Historique →</span>
+            </div>
+            {recentMsgs.length===0
+              ? <div style={{textAlign:"center",padding:"24px 0",color:"var(--t4)",fontSize:13}}>
+                  <div style={{fontSize:28,marginBottom:8}}>📭</div>
+                  Aucun message envoyé
+                </div>
+              : recentMsgs.map(m=>{
+                  const c=SOURCE_COLORS[m.source]||"#6b7280";
+                  const l=SOURCE_LABELS[m.source]||m.source||"?";
+                  return (
+                    <div key={m.id} className="ri" style={{cursor:"pointer"}} onClick={()=>set("messages")}>
+                      <div style={{width:36,height:36,borderRadius:"50%",background:c+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,fontWeight:700,color:c}}>
+                        {(m.prenom||m.nom||m.to||"?")[0]?.toUpperCase()}
+                      </div>
+                      <div className="ri-main">
+                        <div className="ri-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.subject}</div>
+                        <div className="ri-sub">{m.prenom} {m.nom} · <span style={{color:c,fontWeight:600}}>{l}</span></div>
+                      </div>
+                      <div style={{fontSize:10,color:"var(--t4)",whiteSpace:"nowrap"}}>{new Date(m.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}</div>
+                    </div>
+                  );
+                })
+            }
+          </div>
+        </div>
+
+        {/* Accès rapide */}
+        <div className="col-right">
+          <div className="card">
+            <div className="card-hd"><div className="card-title">Accès rapide</div></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:4}}>
+              {QUICK.map(q=>(
+                <button key={q.page} onClick={()=>set(q.page)} style={{
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"14px 8px",
+                  background:q.bg,border:"none",borderRadius:12,cursor:"pointer",transition:"all .15s",
+                  color:q.color
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.1)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}
+                >
+                  <div style={{width:36,height:36,borderRadius:10,background:q.color,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <Icon name={q.icon} size={17} color="white"/>
+                  </div>
+                  <span style={{fontSize:11.5,fontWeight:700,textAlign:"center"}}>{q.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* MEMBERS */
+function Members({ members, onSelect, onEdit, onDelete, onAdd }) {
+  const [search,setSearch]=useState(""); const [filt,setFilt]=useState("Tous");
+  const FILTS = ["Tous","Actif","Inactif","Payée","En attente"];
+  const list = useMemo(()=>members.filter(m=>{
+    const q=search.toLowerCase();
+    const ms=!q||`${m.prenom} ${m.nom} ${m.email} ${m.ville}`.toLowerCase().includes(q);
+    const mf=filt==="Tous"||(filt==="Actif"&&m.statut==="actif")||(filt==="Inactif"&&m.statut==="inactif")||(filt==="Payée"&&m.cotisation==="payée")||(filt==="En attente"&&m.cotisation==="en attente");
+    return ms&&mf;
+  }),[members,search,filt]);
+
+  return (
+    <div className="card">
+      <div className="card-hd" style={{flexWrap:"wrap",gap:10}}>
+        <div className="card-title" style={{flex:"none"}}>{list.length} membre{list.length>1?"s":""}</div>
+        <div style={{flex:1,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <div className="srch">
+            <Icon name="search" size={14} color="#A0AEC0" />
+            <input placeholder="Rechercher un membre…" value={search} onChange={e=>setSearch(e.target.value)} />
+          </div>
+          {FILTS.map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f}</button>)}
+        </div>
+        {onAdd&&<button className="add-btn" onClick={onAdd}><Icon name="plus" size={14} color="white" /> Ajouter un membre</button>}
+      </div>
+      <table>
+        <thead><tr><th>Membre</th><th>Email</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Cotisation</th>{(onEdit||onDelete)&&<th>Actions</th>}</tr></thead>
+        <tbody>
+          {list.map(m=>(
+            <tr key={m.id} onClick={()=>onSelect(m)} style={{cursor:"pointer"}}>
+              <td>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div className="mav" style={{background:avGradSafe(m.id)}}>{ini(m)}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13.5}}>{m.prenom} {m.nom}</div>
+                    <div style={{fontSize:12,color:"var(--t4)"}}>{m.role}</div>
+                  </div>
+                </div>
+              </td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.email}</td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.tel}</td>
+              <td style={{color:"var(--t3)",fontSize:13}}>{m.ville}</td>
+              <td><MBadge s={m.statut} /></td>
+              <td><SBadge s={m.cotisation} /></td>
+              {(onEdit||onDelete)&&<td onClick={e=>e.stopPropagation()}>
+                <div style={{display:"flex",gap:6}}>
+                  {onEdit&&<button onClick={()=>onEdit(m)} style={{padding:"5px 10px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:7,cursor:"pointer",fontSize:12,color:"var(--t2)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                    onMouseOver={e=>{e.currentTarget.style.borderColor="#667eea";e.currentTarget.style.color="#667eea"}}
+                    onMouseOut={e=>{e.currentTarget.style.borderColor="var(--t6)";e.currentTarget.style.color="var(--t2)"}}>
+                    <Icon name="edit" size={12} color="currentColor"/> Modifier
+                  </button>}
+                  {onDelete&&<button onClick={()=>onDelete(m)} style={{padding:"5px 10px",background:"#FFF5F5",border:"1.5px solid #FED7D7",borderRadius:7,cursor:"pointer",fontSize:12,color:"#C53030",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4,transition:"all .14s"}}
+                    onMouseOver={e=>e.currentTarget.style.background="#FED7D7"}
+                    onMouseOut={e=>e.currentTarget.style.background="#FFF5F5"}>
+                    <Icon name="trash" size={12} color="#C53030"/> Supprimer
+                  </button>}
+                </div>
+              </td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* DRAWER */
+function Drawer({ m, close, onEdit, onDelete, onMarkPaid, onEmail, onViewInvoices }) {
+  if (!m) return null;
+  const [showEmail, setShowEmail] = useState(false);
+  const [emailType, setEmailType] = useState("bienvenue");
+  const [sending, setSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  async function doSendEmail(){
+    if(!m.email||!m.email.includes("@")){ alert("Ce membre n'a pas d'adresse e-mail valide."); return; }
+    setSending(true);
+    await onEmail(emailType);
+    setSending(false);
+    setEmailSent(true);
+    setShowEmail(false);
+    setTimeout(()=>setEmailSent(false), 3000);
+  }
+
+  const EMAIL_TYPES = [
+    {v:"bienvenue",    l:"Message de bienvenue"},
+    {v:"en attente",   l:"Rappel cotisation en attente"},
+    {v:"impayée",      l:"Relance cotisation impayée"},
+    {v:"paiement",     l:"Confirmation de paiement"},
+    {v:"modification", l:"Mise à jour du profil"},
+  ];
+
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&close()}>
+      <div className="drawer">
+        <div className="dr-top">
+          <button className="dr-close" onClick={close}>✕</button>
+          <div className="dr-av" style={{background:avGradSafe(m.id)}}>{ini(m)}</div>
+          <div className="dr-name">{m.prenom} {m.nom}</div>
+          <div className="dr-role">{m.role} · Membre depuis {m.joined.slice(0,4)}</div>
+        </div>
+        <div className="dr-body">
+          <div style={{marginBottom:18}}>
+            <div className="dr-st">Coordonnées</div>
+            {[{i:"mail",l:"E-mail",v:m.email||"—"},{i:"phone",l:"Téléphone",v:m.tel||"—"},{i:"location",l:"Ville",v:m.ville||"—"}].map(r=>(
+              <div key={r.l} className="ir">
+                <div className="ir-ico"><Icon name={r.i} size={14} color="#718096" /></div>
+                <div><div className="ir-l">{r.l}</div><div className="ir-v">{r.v}</div></div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginBottom:18}}>
+            <div className="dr-st">Adhésion</div>
+            <div className="ir"><div className="ir-ico"><Icon name="date" size={14} color="#718096" /></div><div><div className="ir-l">Membre depuis</div><div className="ir-v">{new Date(m.joined).toLocaleDateString("fr-FR",{year:"numeric",month:"long",day:"numeric"})}</div></div></div>
+            <div className="ir"><div className="ir-ico"><Icon name="card" size={14} color="#718096" /></div><div><div className="ir-l">Cotisation</div><div className="ir-v"><SBadge s={m.cotisation} /></div></div></div>
+            <div className="ir"><div className="ir-ico"><Icon name="user" size={14} color="#718096" /></div><div><div className="ir-l">Statut</div><div className="ir-v"><MBadge s={m.statut} /></div></div></div>
+          </div>
+
+          {showEmail&&(
+            <div style={{background:"#F8FAFC",border:"1.5px solid var(--t6)",borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Type de message</div>
+              {EMAIL_TYPES.map(t=>(
+                <label key={t.v} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",cursor:"pointer",fontSize:13,color:emailType===t.v?"var(--indigo)":"var(--t2)",fontWeight:emailType===t.v?700:400,borderBottom:"1px solid var(--t6)"}}>
+                  <input type="radio" name="emailType" value={t.v} checked={emailType===t.v} onChange={()=>setEmailType(t.v)} style={{accentColor:"#667eea"}}/>
+                  {t.l}
+                </label>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>setShowEmail(false)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid var(--t6)",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
+                <button onClick={doSendEmail} disabled={sending} style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#667eea,#764ba2)",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:sending?.6:1}}>
+                  {sending?"Envoi…":"✉ Envoyer"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {emailSent&&<div style={{background:"#ECFDF5",color:"#065F46",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,marginBottom:12}}>✅ E-mail envoyé à {m.email}</div>}
+
+          <div>
+            <div className="dr-st">Actions</div>
+            <div className="act-list">
+              <button className="ab ab-p" onClick={()=>setShowEmail(v=>!v)}>
+                <Icon name="mail" size={14} color="white" /> {showEmail?"Fermer messagerie":"Envoyer un e-mail"}
+              </button>
+              {onEdit&&<button className="ab ab-s" onClick={onEdit}><Icon name="edit" size={14} color="#4A5568" /> Modifier le profil</button>}
+              {onMarkPaid&&m.cotisation!=="payée"&&<button className="ab ab-s" onClick={onMarkPaid}><Icon name="card" size={14} color="#4A5568" /> Marquer cotisation payée</button>}
+              <button className="ab ab-s" onClick={onViewInvoices}><Icon name="invoice" size={14} color="#4A5568" /> Voir les factures</button>
+              {onDelete&&<button className="ab ab-d" onClick={onDelete}><Icon name="trash" size={14} color="#C53030" /> Supprimer le membre</button>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* INVOICES */
+function Invoices({ members, filterMember, onClearFilter, onEmail, canDo }) {
+  canDo = canDo || (()=>true);
+  const [filt,setFilt]=useState("toutes");
+  const [invoices,setInvoices]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [showAdd,setShowAdd]=useState(false);
+  const [addForm,setAddForm]=useState({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
+  const [emailRow,setEmailRow]=useState(null);
+  const [emailType,setEmailType]=useState("en attente");
+  const [sending,setSending]=useState(false);
+  const [emailSent,setEmailSent]=useState(null);
+  const MSG_TYPES=[
+    {v:"bienvenue",l:"Bienvenue"},
+    {v:"en attente",l:"Rappel cotisation"},
+    {v:"impayée",l:"Relance impayée"},
+    {v:"paiement",l:"Confirmation paiement"},
+  ];
+  async function doSendFromRow(inv){
+    const fullName=inv.nom_membre||"";
+    const member=members.find(m=>`${m.prenom} ${m.nom}`.toLowerCase()===fullName.toLowerCase());
+    if(!member||!member.email||!member.email.includes("@")){alert("Adresse e-mail introuvable pour ce membre.");return;}
+    setSending(true);
+    await onEmail(member.email,member.prenom,member.nom,member.role||"Membre",emailType);
+    setSending(false);
+    setEmailSent(inv.id);
+    setEmailRow(null);
+    setTimeout(()=>setEmailSent(null),3000);
+  }
+
+  async function loadInvoices(){
+    setLoading(true);
+    try{
+      const {data,error}=await sb.from("factures").select("*").order("created_at",{ascending:false});
+      if(!error && data && data.length>0){
+        setInvoices(data);
+      } else {
+        setInvoices(INVOICES.map(inv=>({id:inv.id,nom_membre:inv.nom,montant:inv.montant,statut:inv.statut,type:inv.type,date:inv.date})));
+      }
+    }catch(e){
+      setInvoices(INVOICES.map(inv=>({id:inv.id,nom_membre:inv.nom,montant:inv.montant,statut:inv.statut,type:inv.type,date:inv.date})));
+    }
+    setLoading(false);
+  }
+
+  function markPaid(inv){
+    setInvoices(prev=>prev.map(i=>i.id===inv.id?{...i,statut:"payée"}:i));
+    sb.from("factures").update({statut:"payée"}).eq("id",inv.id).then(()=>{}).catch(()=>{});
+  }
+
+  function deleteInvoice(inv){
+    if(!window.confirm("Supprimer cette facture ?")) return;
+    setInvoices(prev=>prev.filter(i=>i.id!==inv.id));
+    sb.from("factures").delete().eq("id",inv.id).then(()=>{}).catch(()=>{});
+  }
+
+  function addInvoice(){
+    const nm=addForm.nom_membre||addForm.membre;
+    if(!nm||!addForm.objet) return;
+    const newInv={
+      id:"local-"+Date.now(),
+      nom_membre:nm,
+      montant:parseFloat(addForm.montant)||25,
+      statut:addForm.statut,
+      type:addForm.objet,
+      date:addForm.date
+    };
+    setInvoices(prev=>[newInv,...prev]);
+    sb.from("factures").insert([{nom_membre:nm,montant:newInv.montant,statut:newInv.statut,type:newInv.type,date:newInv.date}]).then(()=>{}).catch(()=>{});
+    setShowAdd(false);
+    setAddForm({membre:"",nom_membre:"",montant:"25",objet:"Cotisation annuelle "+new Date().getFullYear(),date:new Date().toISOString().split("T")[0],statut:"en attente"});
+  }
+
+  function pickAddMember(e){
+    const m=members.find(m=>String(m.id)===e.target.value);
+    if(m) setAddForm(f=>({...f,membre:String(m.id),nom_membre:`${m.prenom} ${m.nom}`}));
+  }
+
+  React.useEffect(()=>{loadInvoices();},[]);
+
+  const list=invoices.filter(i=>(filt==="toutes"||i.statut===filt)&&(!filterMember||!filterMember.trim()||(i.nom_membre||"").toLowerCase().includes(filterMember.toLowerCase())));
+  const paid=invoices.filter(i=>i.statut==="payée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
+  const pending=invoices.filter(i=>i.statut==="en attente").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
+  const unpaid=invoices.filter(i=>i.statut==="impayée").reduce((a,i)=>a+(parseFloat(i.montant)||0),0);
+
+  const IST=[
+    {l:"Encaissé",v:`${paid} €`,s:`${invoices.filter(i=>i.statut==="payée").length} payées`,bg:"linear-gradient(127deg,#56ab2f,#a8e063)"},
+    {l:"En attente",v:`${pending} €`,s:`${invoices.filter(i=>i.statut==="en attente").length} factures`,bg:"linear-gradient(127deg,#f7971e,#ffd200)"},
+    {l:"Impayé",v:`${unpaid} €`,s:`${invoices.filter(i=>i.statut==="impayée").length} factures`,bg:"linear-gradient(127deg,#fc5c7d,#6a3093)"},
+  ];
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:20}}>
+        {IST.map(s=>(
+          <div key={s.l} className="sc" style={{background:s.bg}}>
+            <div className="sc-overlay"/><div className="sc-pattern"/><div className="sc-pattern2"/>
+            <div className="sc-label">{s.l}</div>
+            <div className="sc-val">{s.v}</div>
+            <div className="sc-trend">{s.s}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card">
+        <div className="card-hd">
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <div className="card-title">Factures {new Date().getFullYear()}</div>
+            {filterMember&&filterMember.trim()&&<span style={{display:"inline-flex",alignItems:"center",gap:6,background:"#ede9fe",color:"#5b21b6",borderRadius:20,padding:"3px 12px",fontSize:"0.8rem",fontWeight:600}}>
+              <Icon name="user" size={12} color="#5b21b6"/> {filterMember}
+              <span onClick={onClearFilter} style={{cursor:"pointer",marginLeft:2,fontWeight:700,fontSize:"0.9rem"}}>&times;</span>
+            </span>}
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {["toutes","payée","en attente","impayée"].map(f=><button key={f} className={`fp ${filt===f?"active":""}`} onClick={()=>setFilt(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}
+            {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>}
+          </div>
+        </div>
+        {loading ? <div style={{padding:"40px",textAlign:"center",color:"var(--t4)"}}>Chargement...</div> :
+        <table>
+          <thead><tr><th>Membre</th><th>Objet</th><th>Date</th><th>Montant</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody>
+            {list.map(inv=>(
+              <tr key={inv.id}>
+                <td style={{fontWeight:700}}>{inv.nom_membre}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{inv.type}</td>
+                <td style={{color:"var(--t3)",fontSize:13}}>{inv.date?new Date(inv.date).toLocaleDateString("fr-FR"):"-"}</td>
+                <td style={{fontWeight:800}}>{inv.montant} €</td>
+                <td><SBadge s={inv.statut} /></td>
+                <td>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {canDo("modifier")&&inv.statut!=="payée"&&<button className="pdf-btn" style={{color:"#059669",borderColor:"#bbf7d0",background:"#f0fdf4"}} onClick={()=>markPaid(inv)}>✅ Payée</button>}
+                    <button className="pdf-btn" onClick={()=>{
+                      const parts=(inv.nom_membre||"").split(" ");
+                      generateBeautifulPDF(parts[0]||"",parts.slice(1).join(" ")||"","",inv.montant,inv.type,inv.date,null,inv.statut);
+                    }}>📄 PDF</button>
+                    <button className="pdf-btn" style={{color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>{setEmailRow(emailRow===inv.id?null:inv.id);setEmailType(inv.statut==="payée"?"paiement":inv.statut==="impayée"?"impayée":"en attente");}}>
+                      {emailSent===inv.id?"✅ Envoyé":"✉️ Mail"}
+                    </button>
+                    {canDo("supprimer")&&<button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>deleteInvoice(inv)}>🗑</button>}
+                  </div>
+                  {emailRow===inv.id&&(
+                    <div style={{marginTop:8,padding:"10px 12px",background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#1e3a5f"}}>✉️ E-mail :</span>
+                      <select value={emailType} onChange={e=>setEmailType(e.target.value)} style={{border:"1px solid #bae6fd",borderRadius:7,padding:"5px 8px",fontSize:13,background:"white",color:"#1e3a5f",fontWeight:600,outline:"none"}}>
+                        {MSG_TYPES.map(t=><option key={t.v} value={t.v}>{t.l}</option>)}
+                      </select>
+                      <button onClick={()=>doSendFromRow(inv)} disabled={sending} style={{padding:"5px 14px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",color:"white",border:"none",borderRadius:7,fontSize:13,fontWeight:700,cursor:"pointer",opacity:sending?.6:1}}>
+                        {sending?"...":"Envoyer"}
+                      </button>
+                      <button onClick={()=>setEmailRow(null)} style={{padding:"5px 10px",background:"#e5e7eb",border:"none",borderRadius:7,fontSize:13,cursor:"pointer",color:"#374151"}}>✕</button>
+                    </div>
+                  )}
+                  {emailSent===inv.id&&<div style={{marginTop:6,fontSize:12,color:"#059669",fontWeight:600}}>✅ E-mail envoyé</div>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>}
+      </div>
+
+      {showAdd&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowAdd(false)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:460,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:16,fontWeight:800,color:"var(--t1)"}}>Ajouter une facture</div>
+              <button onClick={()=>setShowAdd(false)} style={{background:"#f3f4f6",border:"none",width:30,height:30,borderRadius:8,fontSize:16,cursor:"pointer",color:"var(--t3)"}}>✕</button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <div className="clabel">Membre</div>
+                <select className="csel" onChange={pickAddMember} defaultValue="">
+                  <option value="" disabled>- Sélectionner un membre -</option>
+                  {members.map(m=><option key={m.id} value={String(m.id)}>{m.prenom} {m.nom}</option>)}
+                </select>
+              </div>
+              {addForm.nom_membre&&<div style={{padding:"8px 12px",background:"#f0fdf4",borderRadius:8,fontSize:13,color:"#059669",fontWeight:600}}>✓ {addForm.nom_membre}</div>}
+              <div>
+                <div className="clabel">Objet *</div>
+                <input className="ci" value={addForm.objet} onChange={e=>setAddForm(f=>({...f,objet:e.target.value}))} placeholder="Cotisation annuelle 2026"/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div>
+                  <div className="clabel">Montant (€)</div>
+                  <input className="ci" value={addForm.montant} onChange={e=>setAddForm(f=>({...f,montant:e.target.value}))}/>
+                </div>
+                <div>
+                  <div className="clabel">Date</div>
+                  <input className="ci" type="date" value={addForm.date} onChange={e=>setAddForm(f=>({...f,date:e.target.value}))}/>
+                </div>
+              </div>
+              <div>
+                <div className="clabel">Statut</div>
+                <select className="csel" value={addForm.statut} onChange={e=>setAddForm(f=>({...f,statut:e.target.value}))}>
+                  <option value="en attente">En attente</option>
+                  <option value="payée">Payée</option>
+                  <option value="impayée">Impayée</option>
+                </select>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}}>
+                <button onClick={()=>setShowAdd(false)} style={{padding:"10px 20px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:10,fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+                <button className="send-btn" style={{width:"auto",padding:"10px 24px"}} onClick={addInvoice}>
+                  <Icon name="plus" size={14} color="white"/> Ajouter la facture
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* EMAIL PAGE */
+function EmailPage({ members, onSend, canDo }) {
+  canDo = canDo || (()=>true);
+  const [mode,setMode]=useState("all");
+  const [subject,setSubject]=useState("");
+  const [message,setMessage]=useState("");
+  const [selected,setSelected]=useState({});
+  const [memberSearch,setMemberSearch]=useState("");
+  const [customList,setCustomList]=useState([]);
+  const [customInput,setCustomInput]=useState("");
+  const [sending,setSending]=useState(false);
+  const [progress,setProgress]=useState({done:0,total:0});
+  const [done,setDone]=useState(false);
+
+  const MODES=[
+    {id:"all",    label:"Tous les adhérents", desc:"Envoie à tous les membres actifs"},
+    {id:"select", label:"Sélection d'adhérents", desc:"Choisissez les membres un par un"},
+    {id:"custom", label:"Emails personnalisés", desc:"Destinataires hors association"},
+  ];
+
+  function getRecipients(){
+    if(mode==="all") return members.filter(m=>m.email&&m.email.includes("@"));
+    if(mode==="select") return members.filter(m=>selected[m.id]&&m.email&&m.email.includes("@"));
+    if(mode==="custom") return customList.map(e=>({email:e,prenom:"",nom:e,role:""}));
+    return [];
+  }
+
+  function toggleMember(id){setSelected(p=>({...p,[id]:!p[id]}));}
+  function selectAll(){const s={};members.forEach(m=>{s[m.id]=true;});setSelected(s);}
+  function clearAll(){setSelected({});}
+
+  function addCustomEmail(){
+    const emails=customInput.split(/[,;\s]+/).map(e=>e.trim()).filter(e=>e.includes("@")&&!customList.includes(e));
+    if(emails.length) setCustomList(p=>[...p,...emails]);
+    setCustomInput("");
+  }
+
+  async function doSend(){
+    const recs=getRecipients();
+    if(!subject||!message){alert("Veuillez remplir le sujet et le message.");return;}
+    if(!recs.length){alert("Aucun destinataire valide.");return;}
+    setSending(true);
+    setProgress({done:0,total:recs.length});
+    for(let i=0;i<recs.length;i++){
+      await onSend(recs[i].email,recs[i].prenom||"",recs[i].nom||recs[i].email,subject,message);
+      setProgress({done:i+1,total:recs.length});
+    }
+    setSending(false);
+    setDone(true);
+    setSubject("");setMessage("");setSelected({});setCustomList([]);
+    setTimeout(()=>setDone(false),4000);
+  }
+
+  const recs=getRecipients();
+  const filteredMembers=members.filter(m=>{
+    const q=memberSearch.toLowerCase();
+    return !q||`${m.prenom} ${m.nom}`.toLowerCase().includes(q);
+  });
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:18,alignItems:"start"}}>
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Choix du mode */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"var(--t2)",marginBottom:12,textTransform:"uppercase",letterSpacing:".04em"}}>Destinataires</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {MODES.map(m=>(
+              <label key={m.id} onClick={()=>setMode(m.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:`2px solid ${mode===m.id?"#667eea":"#e5e7eb"}`,background:mode===m.id?"#f5f3ff":"white",cursor:"pointer",transition:"all .15s"}}>
+                <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${mode===m.id?"#667eea":"#d1d5db"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {mode===m.id&&<div style={{width:8,height:8,borderRadius:"50%",background:"#667eea"}}/>}
+                </div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:13.5,color:mode===m.id?"#4338ca":"var(--t1)"}}>{m.label}</div>
+                  <div style={{fontSize:12,color:"var(--t4)",marginTop:1}}>{m.desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Sélection de membres */}
+        {mode==="select"&&(
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--t2)"}}>Choisir les membres</div>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={selectAll} style={{fontSize:11,padding:"4px 10px",border:"1px solid #d1d5db",borderRadius:7,background:"white",cursor:"pointer",color:"var(--t2)",fontWeight:600}}>Tout</button>
+                <button onClick={clearAll} style={{fontSize:11,padding:"4px 10px",border:"1px solid #d1d5db",borderRadius:7,background:"white",cursor:"pointer",color:"var(--t2)",fontWeight:600}}>Aucun</button>
+              </div>
+            </div>
+            <input value={memberSearch} onChange={e=>setMemberSearch(e.target.value)} placeholder="Rechercher…" style={{width:"100%",padding:"7px 12px",border:"1px solid #e5e7eb",borderRadius:9,fontSize:13,outline:"none",marginBottom:10,boxSizing:"border-box"}}/>
+            <div style={{maxHeight:220,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+              {filteredMembers.map(m=>(
+                <label key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:9,cursor:"pointer",background:selected[m.id]?"#f5f3ff":"white",border:`1px solid ${selected[m.id]?"#c4b5fd":"transparent"}`}}>
+                  <input type="checkbox" checked={!!selected[m.id]} onChange={()=>toggleMember(m.id)} style={{accentColor:"#667eea",width:15,height:15}}/>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:11,fontWeight:700,flexShrink:0}}>
+                    {((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase()}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:13,color:"var(--t1)"}}>{m.prenom} {m.nom}</div>
+                    <div style={{fontSize:11,color:"var(--t4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.email||"Pas d'email"}</div>
+                  </div>
+                  {!m.email&&<span style={{fontSize:10,color:"#dc2626",fontWeight:600}}>Sans email</span>}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Emails personnalisés */}
+        {mode==="custom"&&(
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--t2)",marginBottom:10}}>Ajouter des adresses e-mail</div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <input value={customInput} onChange={e=>setCustomInput(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&addCustomEmail()}
+                placeholder="email@exemple.fr ou plusieurs séparés par virgule"
+                style={{flex:1,padding:"8px 12px",border:"1px solid #e5e7eb",borderRadius:9,fontSize:13,outline:"none"}}/>
+              <button onClick={addCustomEmail} style={{padding:"8px 16px",background:"var(--indigo-grad)",color:"white",border:"none",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer"}}>+</button>
+            </div>
+            {customList.length>0&&(
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {customList.map(e=>(
+                  <span key={e} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 12px",background:"#ede9fe",color:"#5b21b6",borderRadius:20,fontSize:12,fontWeight:600}}>
+                    {e}
+                    <span onClick={()=>setCustomList(p=>p.filter(x=>x!==e))} style={{cursor:"pointer",fontWeight:800,fontSize:13}}>×</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Formulaire */}
+        <div className="card">
+          <div className="card-hd"><div className="card-title">Rédiger le message</div></div>
+          <div className="cf">
+            <div><div className="clabel">Sujet *</div><input className="ci" placeholder="Assemblée générale 2026…" value={subject} onChange={e=>setSubject(e.target.value)}/></div>
+            <div><div className="clabel">Message *</div><textarea className="cta" style={{minHeight:160}} placeholder={"Bonjour,\n\nVotre message ici…"} value={message} onChange={e=>setMessage(e.target.value)}/></div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                <span style={{fontSize:13,fontWeight:700,color:"var(--t2)"}}>
+                  {recs.length} destinataire{recs.length!==1?"s":""}
+                  {mode==="all"&&<span style={{fontSize:11,color:"var(--t4)",fontWeight:400}}> (membres avec email)</span>}
+                </span>
+                {sending&&<span style={{fontSize:12,color:"#667eea",fontWeight:600}}>Envoi {progress.done}/{progress.total}…</span>}
+                {done&&<span style={{fontSize:12,color:"#059669",fontWeight:700}}>✅ Envoyé à {progress.total} destinataire{progress.total!==1?"s":""}  !</span>}
+              </div>
+              {canDo("ajouter")
+                ? <button onClick={doSend} disabled={!subject||!message||sending||recs.length===0}
+                    style={{padding:"11px 26px",background:"var(--indigo-grad)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:14,cursor:"pointer",opacity:(!subject||!message||sending||recs.length===0)?.5:1,display:"flex",alignItems:"center",gap:8}}>
+                    <Icon name="mail" size={15} color="white"/>
+                    {sending?`Envoi ${progress.done}/${progress.total}…`:`Envoyer${recs.length>0?" ("+recs.length+")":""}`}
+                  </button>
+                : <div style={{fontSize:13,color:"#ef4444",fontWeight:600}}>Vous n'avez pas la permission d'envoyer des emails.</div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Aperçu */}
+      <div style={{position:"sticky",top:20}}>
+        <div className="pm">
+          <div className="pm-hd">
+            <div style={{width:32,height:32,borderRadius:9,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Icon name="mail" size={16} color="white"/>
+            </div>
+            <div>
+              <div style={{fontSize:11.5,opacity:.75}}>Ch'tis en Maine</div>
+              <div style={{fontSize:14.5,fontWeight:800}}>{subject||"Sujet du message"}</div>
+            </div>
+          </div>
+          <div className="pm-body">
+            {message?message.split("\n").map((l,i)=><p key={i} style={{marginBottom:6}}>{l||<br/>}</p>):<span style={{color:"var(--t5)"}}>Aperçu du message…</span>}
+            {message&&<><hr style={{border:"none",borderTop:"1px solid var(--t6)",margin:"12px 0"}}/><p style={{fontSize:12,color:"var(--t4)"}}>Cordialement,<br/>L'équipe de Ch'tis en Maine</p></>}
+          </div>
+        </div>
+        {recs.length>0&&(
+          <div className="card" style={{marginTop:14,padding:"14px 16px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--t3)",marginBottom:8,textTransform:"uppercase",letterSpacing:".04em"}}>Destinataires ({recs.length})</div>
+            <div style={{maxHeight:160,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+              {recs.slice(0,30).map((r,i)=>(
+                <div key={i} style={{fontSize:12.5,color:"var(--t2)",padding:"4px 8px",borderRadius:6,background:"#f9fafb"}}>
+                  {r.prenom&&r.nom?`${r.prenom} ${r.nom} — `:""}{r.email}
+                </div>
+              ))}
+              {recs.length>30&&<div style={{fontSize:12,color:"var(--t4)",padding:"4px 8px"}}>+{recs.length-30} autres…</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* DOCUMENTS */
+const DOC_LS="chtis_docs";
+const DOC_CATS=["Tous","Réunions","Juridique","Formulaires","Finances","Rapports","Autre"];
+const DOC_STATIC=[
+  {id:"s1",name:"Compte-rendu AG 2026.pdf",cat:"Réunions",date:"2026-04-28",size:1258291,data:null},
+  {id:"s2",name:"Statuts de l'association.pdf",cat:"Juridique",date:"2026-04-20",size:865280,data:null},
+  {id:"s3",name:"Formulaire d'adhésion.docx",cat:"Formulaires",date:"2026-04-15",size:327680,data:null},
+  {id:"s4",name:"Budget prévisionnel 2026.xlsx",cat:"Finances",date:"2026-04-10",size:240640,data:null},
+  {id:"s5",name:"Rapport d'activité 2025.pdf",cat:"Rapports",date:"2026-04-05",size:1887437,data:null},
+  {id:"s6",name:"Règlement intérieur.pdf",cat:"Juridique",date:"2026-01-01",size:421888,data:null},
+];
+
+function fmtSize(b){if(!b)return"—";if(b<1024)return b+" o";if(b<1048576)return(b/1024).toFixed(0)+" Ko";return(b/1048576).toFixed(1)+" Mo";}
+function docExt(name){return(name||"").split(".").pop().toLowerCase();}
+function docColor(name){
+  const e=docExt(name);
+  if(["pdf"].includes(e)) return{bg:"#FFF5F5",ico:"#C53030",label:"PDF"};
+  if(["doc","docx"].includes(e)) return{bg:"#EBF8FF",ico:"#2B6CB0",label:"DOC"};
+  if(["xls","xlsx"].includes(e)) return{bg:"#F0FFF4",ico:"#276749",label:"XLS"};
+  if(["ppt","pptx"].includes(e)) return{bg:"#FFFAF0",ico:"#C05621",label:"PPT"};
+  if(["jpg","jpeg","png","gif","webp"].includes(e)) return{bg:"#FAF5FF",ico:"#7C3AED",label:"IMG"};
+  return{bg:"#F7FAFC",ico:"#4A5568",label:e.toUpperCase()||"FIC"};
+}
+
+const DOC_BUCKET = "documents";
+
+function DocsPage({ canDo }) {
+  canDo = canDo || (()=>true);
+  const [docs,setDocs]=useState([]);
+  const [cat,setCat]=useState("Tous");
+  const [search,setSearch]=useState("");
+  const [sort,setSort]=useState("date");
+  const [uploading,setUploading]=useState(false);
+  const [uploadErr,setUploadErr]=useState("");
+  const [dragOver,setDragOver]=useState(false);
+  const [deleteId,setDeleteId]=useState(null);
+  const [deleting,setDeleting]=useState(false);
+  const [catForm,setCatForm]=useState("Autre");
+  const [pendingFile,setPendingFile]=useState(null);
+  const [editCatId,setEditCatId]=useState(null);
+  const [editCatVal,setEditCatVal]=useState("Autre");
+  const fileRef=React.useRef();
+
+  const [loadingDocs,setLoadingDocs]=useState(true);
+
+  async function loadDocs(){
+    setLoadingDocs(true);
+    try{
+      const {data,error}=await sb.from("documents").select("*").order("created_at",{ascending:false});
+      if(!error&&data){ setDocs(data); setLoadingDocs(false); return; }
+    }catch(e){}
+    try{ const stored=localStorage.getItem(DOC_LS); if(stored){ setDocs(JSON.parse(stored)); } }catch(e){}
+    setLoadingDocs(false);
+  }
+
+  async function updateCat(id,newCat){
+    try{ await sb.from("documents").update({cat:newCat}).eq("id",id); }catch(e){}
+    setDocs(prev=>prev.map(d=>d.id===id?{...d,cat:newCat}:d));
+    setEditCatId(null);
+  }
+
+  React.useEffect(()=>{ loadDocs(); },[]);
+
+  async function uploadFile(file, chosenCat){
+    if(file.size > 50*1024*1024){ setUploadErr("Fichier trop volumineux (max 50 Mo)."); return; }
+    setUploading(true); setUploadErr("");
+    try{
+      const safeName = file.name.replace(/[^a-zA-Z0-9._\-]/g,"_");
+      const path = `${Date.now()}_${safeName}`;
+      const { error: upErr } = await sb.storage.from(DOC_BUCKET).upload(path, file, { upsert: false });
+      if(upErr) throw upErr;
+      const { data: urlData } = sb.storage.from(DOC_BUCKET).getPublicUrl(path);
+      const newDoc = {
+        id: "d"+Date.now(),
+        name: file.name,
+        cat: chosenCat||"Autre",
+        date: new Date().toISOString().split("T")[0],
+        size: file.size,
+        type: file.type,
+        path,
+        url: urlData.publicUrl,
+      };
+      try{ await sb.from("documents").insert([newDoc]); }catch(_){}
+      setDocs(prev=>[newDoc,...prev]);
+      setPendingFile(null);
+    }catch(e){
+      
+      setUploadErr("Erreur d'upload : " + (e.message||"Vérifiez que le bucket « documents » existe dans Supabase Storage et est Public."));
+    }
+    setUploading(false);
+  }
+
+  function onFileChange(e){
+    const file=e.target.files[0];
+    if(file){ setPendingFile(file); setCatForm("Autre"); setUploadErr(""); }
+    e.target.value="";
+  }
+
+  function onDrop(e){
+    e.preventDefault(); setDragOver(false);
+    const file=e.dataTransfer.files[0];
+    if(file){ setPendingFile(file); setCatForm("Autre"); setUploadErr(""); }
+  }
+
+  function confirmUpload(){ uploadFile(pendingFile, catForm); }
+
+  function download(doc){
+    if(doc.url){
+      const a=document.createElement("a");
+      a.href=doc.url; a.download=doc.name; a.target="_blank"; a.click();
+    } else if(doc.data){
+      const a=document.createElement("a");
+      a.href=doc.data; a.download=doc.name; a.click();
+    } else {
+      alert("Ce document n'a pas de fichier associé.");
+    }
+  }
+
+  async function deleteDoc(){
+    const doc = docs.find(d=>d.id===deleteId);
+    setDeleting(true);
+    if(doc?.path){
+      try{ await sb.storage.from(DOC_BUCKET).remove([doc.path]); }
+      catch(e){  }
+    }
+    try{ await sb.from("documents").delete().eq("id",deleteId); }catch(e){}
+    setDocs(prev=>prev.filter(d=>d.id!==deleteId));
+    setDeleteId(null); setDeleting(false);
+  }
+
+  const filtered=docs
+    .filter(d=>(cat==="Tous"||d.cat===cat)&&(!search||(d.name||"").toLowerCase().includes(search.toLowerCase())))
+    .sort((a,b)=>{
+      if(sort==="name") return a.name.localeCompare(b.name);
+      if(sort==="size") return (b.size||0)-(a.size||0);
+      return new Date(b.date)-new Date(a.date);
+    });
+
+  return (
+    <div>
+      {/* Upload zone — ajouter permission only */}
+      {canDo("ajouter")&&<div
+        onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+        onDragLeave={()=>setDragOver(false)}
+        onDrop={onDrop}
+        onClick={()=>fileRef.current.click()}
+        style={{border:`2px dashed ${dragOver?"#667eea":"#d1d5db"}`,borderRadius:16,padding:"28px 20px",textAlign:"center",cursor:"pointer",marginBottom:20,background:dragOver?"#f5f3ff":"#fafbff",transition:"all .2s"}}>
+        <input ref={fileRef} type="file" style={{display:"none"}} onChange={onFileChange}
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv,.zip"/>
+        <div style={{fontSize:32,marginBottom:8}}>{uploading?"⏳":"📁"}</div>
+        <div style={{fontWeight:700,color:"var(--t1)",fontSize:14,marginBottom:4}}>
+          {uploading?"Traitement en cours…":"Glissez un fichier ici ou cliquez pour sélectionner"}
+        </div>
+        <div style={{fontSize:12,color:"var(--t4)"}}>PDF, Word, Excel, PowerPoint, Images, ZIP — max 50 Mo · Stockage Supabase</div>
+      </div>}
+
+      {/* Upload error */}
+      {uploadErr&&(
+        <div style={{background:"#fff1f2",border:"1.5px solid #fecdd3",borderRadius:12,padding:"14px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"flex-start"}}>
+          <span style={{fontSize:18,flexShrink:0}}>⚠️</span>
+          <div>
+            <div style={{fontWeight:700,color:"#be123c",fontSize:13,marginBottom:4}}>{uploadErr}</div>
+            <div style={{fontSize:12,color:"#9f1239"}}>→ Dans Supabase : <strong>Storage → New bucket → Nom : <code>documents</code> → Public : ON</strong></div>
+          </div>
+          <button onClick={()=>setUploadErr("")} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#f87171",flexShrink:0}}>×</button>
+        </div>
+      )}
+
+      {/* Modal catégorie */}
+      {pendingFile&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setPendingFile(null)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:400,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center"}}>
+            <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:16}}>Choisir une catégorie</div>
+            <div style={{padding:"10px 14px",background:"#f0fdf4",borderRadius:10,fontSize:13,color:"#059669",fontWeight:600,marginBottom:16}}>📄 {pendingFile.name} ({fmtSize(pendingFile.size)})</div>
+            <div className="clabel">Catégorie</div>
+            <select className="csel" value={catForm} onChange={e=>setCatForm(e.target.value)} style={{marginBottom:20}}>
+              {DOC_CATS.filter(c=>c!=="Tous").map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setPendingFile(null)} style={{flex:1,padding:"9px",background:"white",border:"1.5px solid #e5e7eb",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",color:"var(--t3)"}}>Annuler</button>
+              <button onClick={confirmUpload} disabled={uploading} style={{flex:2,padding:"9px",background:"var(--indigo-grad)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",color:"white",opacity:uploading?.6:1}}>
+                {uploading?"⏳ Upload en cours…":"⬆ Importer sur Supabase"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filtres */}
+      <div className="card" style={{marginBottom:20,padding:"14px 18px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <div style={{position:"relative",flex:1,minWidth:180}}>
+            <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="search" size={15} color="#9ca3af"/></span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un document…" style={{width:"100%",padding:"8px 10px 8px 33px",border:"1px solid #e5e7eb",borderRadius:9,fontSize:13,outline:"none",background:"#f9fafb"}}/>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {DOC_CATS.map(c=>(
+              <button key={c} onClick={()=>setCat(c)} className={`fp ${cat===c?"active":""}`}>{c}</button>
+            ))}
+          </div>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{border:"1px solid #e5e7eb",borderRadius:9,padding:"7px 10px",fontSize:13,background:"white",color:"var(--t2)",outline:"none",fontWeight:600}}>
+            <option value="date">Date ↓</option>
+            <option value="name">Nom A→Z</option>
+            <option value="size">Taille ↓</option>
+          </select>
+          <div style={{color:"var(--t4)",fontSize:13,whiteSpace:"nowrap"}}>{filtered.length} fichier{filtered.length!==1?"s":""}</div>
+        </div>
+      </div>
+
+      {/* Grille */}
+      {filtered.length===0?(
+        <div className="card" style={{padding:"60px 24px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📭</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:6}}>{search||cat!=="Tous"?"Aucun résultat":"Aucun document"}</div>
+          <div style={{fontSize:13,color:"var(--t4)"}}>Importez votre premier document en glissant un fichier ci-dessus.</div>
+        </div>
+      ):(
+        <div className="docs-grid">
+          {filtered.map(d=>{
+            const {bg,ico,label}=docColor(d.name);
+            return (
+              <div key={d.id} className="doc-full">
+                <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:10}}>
+                  <div style={{width:46,height:46,borderRadius:12,background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0,border:`1px solid ${ico}22`}}>
+                    <Icon name="doc" size={18} color={ico}/>
+                    <span style={{fontSize:9,fontWeight:800,color:ico,marginTop:2,letterSpacing:.5}}>{label}</span>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"var(--t1)",lineHeight:1.3,wordBreak:"break-word"}}>{d.name}</div>
+                    <div style={{fontSize:11.5,color:"var(--t4)",marginTop:3}}>{fmtDate(d.date)} · {fmtSize(d.size)}</div>
+                  {editCatId===d.id?(
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6}}>
+                      <select autoFocus value={editCatVal} onChange={e=>setEditCatVal(e.target.value)}
+                        style={{border:"1.5px solid #667eea",borderRadius:8,padding:"3px 8px",fontSize:12,fontWeight:600,color:"#4338ca",outline:"none",background:"white"}}>
+                        {DOC_CATS.filter(c=>c!=="Tous").map(c=><option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <button onClick={()=>updateCat(d.id,editCatVal)} style={{padding:"3px 10px",background:"var(--indigo-grad)",color:"white",border:"none",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>✓</button>
+                      <button onClick={()=>setEditCatId(null)} style={{padding:"3px 8px",background:"#f3f4f6",color:"var(--t3)",border:"none",borderRadius:7,fontSize:12,cursor:"pointer"}}>✕</button>
+                    </div>
+                  ):(
+                    <span title="Cliquer pour modifier" onClick={()=>{setEditCatId(d.id);setEditCatVal(d.cat);}}
+                      style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:5,padding:"2px 10px",borderRadius:20,background:bg,color:ico,fontSize:11,fontWeight:700,border:`1px solid ${ico}33`,cursor:"pointer",userSelect:"none"}}>
+                      {d.cat} <span style={{fontSize:10,opacity:.7}}>✏️</span>
+                    </span>
+                  )}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="pdf-btn" style={{flex:1,justifyContent:"center",color:"#2563eb",borderColor:"#bfdbfe",background:"#eff6ff"}} onClick={()=>download(d)}>⬇ Télécharger</button>
+                  {canDo("supprimer")&&<button className="pdf-btn" style={{color:"#dc2626",borderColor:"#fecaca",background:"#fef2f2"}} onClick={()=>setDeleteId(d.id)}>🗑</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Confirmation suppression */}
+      {deleteId&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDeleteId(null)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:360,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⚠️</div>
+            <div style={{fontWeight:800,fontSize:16,color:"var(--t1)",marginBottom:8}}>Supprimer ce document ?</div>
+            <div style={{color:"var(--t3)",fontSize:13,marginBottom:22}}>Cette action est irréversible.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={()=>setDeleteId(null)} disabled={deleting} style={{padding:"9px 22px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+              <button onClick={deleteDoc} disabled={deleting} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14,opacity:deleting?.6:1}}>{deleting?"Suppression…":"Supprimer"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* INVOICE GENERATOR PAGE */
+function InvoiceGenerator({ members }) {
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [email, setEmail] = useState("");
+  const [membreId, setMembreId] = useState(null);
+  const [montant, setMontant] = useState("25");
+  const [objet, setObjet] = useState("Cotisation annuelle 2024");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [generated, setGenerated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [num] = useState("FACT-" + new Date().getFullYear() + "-" + String(Math.floor(Math.random()*9000)+1000));
+
+  function pickMember(e) {
+    const m = members.find(m => String(m.id) === e.target.value);
+    if (m) { setNom(m.nom); setPrenom(m.prenom); setEmail(m.email||""); setMembreId(m.id); }
+  }
+
+  async function generateAndSave(){
+    if(!objet.trim()){ alert("Veuillez saisir un objet pour la facture."); return; }
+    if(!prenom.trim()||!nom.trim()){ alert("Veuillez saisir le prénom et le nom."); return; }
+    setGenerated(true);
+    setSaving(true);
+    try{
+      await sb.from("factures").insert([{
+        membre_id: membreId||null,
+        nom_membre: `${prenom} ${nom}`,
+        montant: parseFloat(montant)||25,
+        statut: "en attente",
+        type: objet,
+        date: date
+      }]);
+      setSaved(true);
+    }catch(e){  }
+    setSaving(false);
+  }
+
+  function downloadPDF(){
+    if(!prenom.trim()||!nom.trim()){ alert("Veuillez saisir le prénom et le nom avant de télécharger."); return; }
+    generateBeautifulPDF(prenom, nom, email, montant, objet, date, num, "en attente");
+  }
+
+  return (
+    <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, alignItems:"start"}}>
+      
+      <div className="card">
+        <div className="card-hd">
+          <div style={{width:32,height:32,borderRadius:9,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:4}}>
+            <Icon name="invoice" size={16} color="white" />
+          </div>
+          <div className="card-title">Générateur de facture</div>
+        </div>
+        <div className="cf">
+          <div>
+            <div className="clabel" style={{color:"#667eea"}}>Objet de la facture *</div>
+            <input className="ci" value={objet} onChange={e=>setObjet(e.target.value)}
+              placeholder="Ex : Cotisation annuelle 2026, Don, Événement…"
+              style={!objet.trim()?{borderColor:"rgba(102,126,234,.5)"}:{}} />
+          </div>
+          <div style={{height:1,background:"var(--t6)",margin:"2px 0"}}/>
+          <div>
+            <div className="clabel">Choisir un membre existant</div>
+            <select className="csel" onChange={pickMember} defaultValue="">
+              <option value="" disabled>- Sélectionner un membre -</option>
+              {members.map(m => <option key={m.id} value={String(m.id)}>{m.prenom} {m.nom}</option>)}
+            </select>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div className="clabel">Prénom *</div><input className="ci" value={prenom} onChange={e=>setPrenom(e.target.value)} placeholder="Jean"/></div>
+            <div><div className="clabel">Nom *</div><input className="ci" value={nom} onChange={e=>setNom(e.target.value)} placeholder="Dupont"/></div>
+          </div>
+          <div><div className="clabel">Email</div><input className="ci" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="jean@email.fr"/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div className="clabel">Montant (€)</div><input className="ci" value={montant} onChange={e=>setMontant(e.target.value)}/></div>
+            <div><div className="clabel">Date</div><input className="ci" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+          </div>
+          {saved&&<div style={{background:"#f0fdf4",color:"#059669",padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600}}>✅ Facture sauvegardée !</div>}
+          <button className="send-btn" onClick={generateAndSave} disabled={saving}>
+            <Icon name="invoice" size={15} color="white"/> {saving?"Sauvegarde...":"Générer et sauvegarder"}
+          </button>
+          <button onClick={downloadPDF} disabled={!generated}
+            style={{width:"100%",padding:"11px",background:generated?"white":"var(--t6)",color:generated?"#667eea":"var(--t4)",border:"1.5px solid",borderColor:generated?"rgba(102,126,234,.35)":"var(--t6)",borderRadius:"10px",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:generated?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .18s"}}>
+            ⬇ Télécharger le PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="card" style={{overflow:"visible"}}>
+        <div className="card-hd">
+          <div className="card-title">Aperçu de la facture</div>
+          {generated && <span className="badge bg">Générée</span>}
+        </div>
+        <div style={{padding:"28px 28px 24px", fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+          
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:38,height:38,borderRadius:10,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Icon name="users" size={18} color="white" />
+              </div>
+              <div>
+                <div style={{fontWeight:800,fontSize:14,color:"var(--t1)"}}>Ch'tis en Maine</div>
+                <div style={{fontSize:11,color:"var(--t4)"}}>Association loi 1901</div>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:20,fontWeight:900,color:"var(--t1)",letterSpacing:".05em",textTransform:"uppercase"}}>Facture</div>
+              <div style={{fontSize:12,color:"#667eea",fontWeight:700,marginTop:2}}>N° {num}</div>
+              <div style={{fontSize:11.5,color:"var(--t4)",marginTop:1}}>Date : {date}</div>
+            </div>
+          </div>
+          <div style={{height:2,background:"linear-gradient(90deg,#667eea,#764ba2)",borderRadius:2,marginBottom:24}} />
+          
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Facturé à</div>
+              <div style={{fontWeight:700,fontSize:14,color:"var(--t1)"}}>{prenom} {nom}</div>
+              <div style={{fontSize:12.5,color:"var(--t3)",marginTop:2}}>{email}</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>Émis par</div>
+              <div style={{fontWeight:700,fontSize:14,color:"var(--t1)"}}>Ch'tis en Maine</div>
+              <div style={{fontSize:12.5,color:"var(--t3)",marginTop:2}}>contact@chtis-en-maine.fr</div>
+              <div style={{fontSize:12.5,color:"var(--t3)"}}>Sarthe, Pays de la Loire</div>
+            </div>
+          </div>
+          
+          <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",overflow:"hidden",marginBottom:20}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:0}}>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)"}}>Description</div>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)",textAlign:"right"}}>Qté</div>
+              <div style={{padding:"10px 14px",fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",borderBottom:"1px solid var(--t6)",textAlign:"right"}}>Total</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,fontWeight:500,color:"var(--t1)"}}>{objet}</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,color:"var(--t3)",textAlign:"right"}}>1</div>
+              <div style={{padding:"12px 14px",fontSize:13.5,fontWeight:700,color:"var(--t1)",textAlign:"right"}}>{montant} €</div>
+            </div>
+          </div>
+          
+          <div style={{display:"flex",justifyContent:"flex-end"}}>
+            <div style={{background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:"var(--r-sm)",padding:"14px 22px",color:"white",minWidth:160,textAlign:"right"}}>
+              <div style={{fontSize:11.5,opacity:.8,marginBottom:3}}>Montant total</div>
+              <div style={{fontSize:22,fontWeight:900,letterSpacing:"-.5px"}}>{montant} €</div>
+            </div>
+          </div>
+          <div style={{marginTop:20,padding:14,background:"var(--bg)",borderRadius:"var(--r-sm)",fontSize:12,color:"var(--t4)",textAlign:"center"}}>
+            Merci de votre confiance - Ch'tis en Maine · Association loi 1901
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ADD MEMBER PAGE */
+function AddMember({ onCreated }) {
+  const stepState = useState(1);
+  const step = stepState[0];
+  const setStep = stepState[1];
+  const formState = useState({
+    prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
+    login:"", password:"", confirm:"", cotisation:"en attente", statut:"actif"
+  });
+  const form = formState[0];
+  const setForm = formState[1];
+  const errState = useState({});
+  const errors = errState[0];
+  const setErrors = errState[1];
+  const passState = useState(false);
+  const showPass = passState[0];
+  const setShowPass = passState[1];
+
+  function upd(k, v) { setForm(f=>({...f,[k]:v})); if(errors[k]) setErrors(e=>({...e,[k]:""})); }
+
+  function validateStep1() {
+    const e={};
+    if (!form.prenom.trim()) e.prenom="Requis";
+    if (!form.nom.trim()) e.nom="Requis";
+    if (!form.email.trim() || !form.email.includes("@")) e.email="Email invalide";
+    if (!form.tel.trim()) e.tel="Requis";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function validateStep2() {
+    const e={};
+    if (!form.login.trim()) e.login="Requis";
+    if (form.password.length < 6) e.password="6 caractères minimum";
+    if (form.password !== form.confirm) e.confirm="Les mots de passe ne correspondent pas";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function genLogin() {
+    const l = (form.prenom.toLowerCase().replace(/\s/g,"") + "." + form.nom.toLowerCase().replace(/\s/g,"")).substring(0,30);
+    upd("login", l);
+  }
+
+  function genPassword() {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!";
+    const p = Array.from({length:10}, ()=>chars[Math.floor(Math.random()*chars.length)]).join("");
+    upd("password", p); upd("confirm", p);
+  }
+
+  const ROLES = ["Membre","Président","Vice-Président","Secrétaire","Trésorier","Conseil d'Administration"];
+
+  const StepDot = ({n}) => (
+    <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,
+        background: step>=n ? "linear-gradient(135deg,#667eea,#764ba2)" : "var(--bg)",
+        color: step>=n ? "white" : "var(--t4)",
+        boxShadow: step>=n ? "0 4px 10px rgba(102,126,234,.3)" : "none",
+        transition:"all .3s"
+      }}>{step>n ? "✓" : n}</div>
+      {n < 3 && <div style={{width:40,height:2,background: step>n ? "linear-gradient(90deg,#667eea,#764ba2)" : "var(--t6)",borderRadius:2,transition:"all .3s"}} />}
+    </div>
+  );
+
+  return (
+    <div style={{maxWidth:780, margin:"0 auto"}}>
+      
+      <div className="card" style={{marginBottom:20}}>
+        <div style={{padding:"20px 28px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div className="card-title">Ajouter un nouveau membre</div>
+          <div style={{display:"flex",alignItems:"center",gap:0}}>
+            {[1,2,3].map(n=><StepDot key={n} n={n} />)}
+          </div>
+        </div>
+        <div style={{height:1,background:"var(--t6)"}} />
+        <div style={{padding:"8px 28px 12px",display:"flex",gap:40}}>
+          {[{n:1,l:"Informations personnelles"},{n:2,l:"Identifiants de connexion"},{n:3,l:"Confirmation"}].map(s=>(
+            <div key={s.n} style={{fontSize:12.5,fontWeight:step===s.n?700:500,color:step===s.n?"#667eea":step>s.n?"var(--t3)":"var(--t4)"}}>{s.l}</div>
+          ))}
+        </div>
+      </div>
+
+      
+      {step===1 && (
+        <div className="card">
+          <div className="card-hd"><div className="card-title">Informations personnelles</div></div>
+          <div className="cf">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Prénom *</div>
+                <input className="ci" placeholder="Jean" value={form.prenom} onChange={e=>upd("prenom",e.target.value)} style={errors.prenom?{borderColor:"var(--red-d)"}:{}} />
+                {errors.prenom && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.prenom}</div>}
+              </div>
+              <div>
+                <div className="clabel">Nom *</div>
+                <input className="ci" placeholder="Dupont" value={form.nom} onChange={e=>upd("nom",e.target.value)} style={errors.nom?{borderColor:"var(--red-d)"}:{}} />
+                {errors.nom && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.nom}</div>}
+              </div>
+            </div>
+            <div>
+              <div className="clabel">Adresse e-mail *</div>
+              <input className="ci" type="email" placeholder="jean.dupont@email.fr" value={form.email} onChange={e=>upd("email",e.target.value)} style={errors.email?{borderColor:"var(--red-d)"}:{}} />
+              {errors.email && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.email}</div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Téléphone *</div>
+                <input className="ci" placeholder="+33 6 12 34 56 78" value={form.tel} onChange={e=>upd("tel",e.target.value)} style={errors.tel?{borderColor:"var(--red-d)"}:{}} />
+                {errors.tel && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.tel}</div>}
+              </div>
+              <div>
+                <div className="clabel">Ville</div>
+                <input className="ci" placeholder="Le Mans" value={form.ville} onChange={e=>upd("ville",e.target.value)} />
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="clabel">Rôle dans l'association</div>
+                <select className="csel" value={form.role} onChange={e=>upd("role",e.target.value)}>
+                  {ROLES.map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="clabel">Statut</div>
+                <select className="csel" value={form.statut} onChange={e=>upd("statut",e.target.value)}>
+                  <option value="actif">Actif</option>
+                  <option value="inactif">Inactif</option>
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={()=>{ if(validateStep1()) setStep(2); }}>
+                Suivant → Identifiants
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {step===2 && (
+        <div className="card">
+          <div className="card-hd">
+            <div className="card-title">Identifiants de connexion</div>
+            <div style={{fontSize:12.5,color:"var(--t4)"}}>Ces identifiants permettront au membre de se connecter à l'espace membres</div>
+          </div>
+          <div className="cf">
+            <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:40,height:40,borderRadius:50,background:avGradSafe(1),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:"white",flexShrink:0}}>
+                {form.prenom[0]||"?"}{form.nom[0]||"?"}
+              </div>
+              <div>
+                <div style={{fontWeight:700,fontSize:14}}>{form.prenom||"Prénom"} {form.nom||"Nom"}</div>
+                <div style={{fontSize:12.5,color:"var(--t4)"}}>{form.email||"email@exemple.fr"}</div>
+              </div>
+            </div>
+
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                <div className="clabel">Identifiant (login) *</div>
+                {form.prenom && form.nom && (
+                  <button onClick={genLogin} style={{fontSize:12,color:"#667eea",background:"none",border:"none",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>
+                    Générer automatiquement
+                  </button>
+                )}
+              </div>
+              <input className="ci" placeholder="jean.dupont" value={form.login} onChange={e=>upd("login",e.target.value)} style={errors.login?{borderColor:"var(--red-d)"}:{}} />
+              {errors.login && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.login}</div>}
+              <div style={{fontSize:12,color:"var(--t4)",marginTop:4}}>L'identifiant sera utilisé pour se connecter à l'espace membres.</div>
+            </div>
+
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                <div className="clabel">Mot de passe *</div>
+                <button onClick={genPassword} style={{fontSize:12,color:"#667eea",background:"none",border:"none",cursor:"pointer",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600}}>
+                  Générer un mot de passe fort
+                </button>
+              </div>
+              <div style={{position:"relative"}}>
+                <input className="ci" type={showPass?"text":"password"} placeholder="••••••••" value={form.password} onChange={e=>upd("password",e.target.value)} style={{paddingRight:44, ...(errors.password?{borderColor:"var(--red-d)"}:{})}} />
+                <button onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--t4)"}}>
+                  {showPass?"Cacher":"Voir"}
+                </button>
+              </div>
+              {errors.password && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.password}</div>}
+            </div>
+
+            <div>
+              <div className="clabel">Confirmer le mot de passe *</div>
+              <input className="ci" type={showPass?"text":"password"} placeholder="••••••••" value={form.confirm} onChange={e=>upd("confirm",e.target.value)} style={errors.confirm?{borderColor:"var(--red-d)"}:{}} />
+              {errors.confirm && <div style={{fontSize:12,color:"var(--red-d)",marginTop:4}}>{errors.confirm}</div>}
+            </div>
+
+            <div style={{background:"#EBF8FF",border:"1px solid #BEE3F8",borderRadius:"var(--r-sm)",padding:"12px 16px",fontSize:13,color:"#2B6CB0",display:"flex",gap:8,alignItems:"flex-start"}}>
+              <span style={{flexShrink:0}}>ℹ️</span>
+              <span>Un email avec les identifiants de connexion sera envoyé automatiquement à <strong>{form.email||"l'adresse e-mail du membre"}</strong>.</span>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <button onClick={()=>setStep(1)} style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>
+                ← Retour
+              </button>
+              <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={()=>{ if(validateStep2()) setStep(3); }}>
+                Créer le compte membre →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {step===3 && (
+        <div className="card" style={{textAlign:"center",padding:"52px 40px"}}>
+          <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#56ab2f,#a8e063)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",boxShadow:"0 8px 24px rgba(86,171,47,.3)",fontSize:32}}>
+            ✓
+          </div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",marginBottom:8,letterSpacing:"-.3px"}}>Membre créé avec succès !</div>
+          <div style={{fontSize:14,color:"var(--t3)",marginBottom:28,maxWidth:420,margin:"0 auto 28px"}}>
+            <strong>{form.prenom} {form.nom}</strong> a bien été ajouté(e) à l'association. Un email avec ses identifiants de connexion a été envoyé à <strong>{form.email}</strong>.
+          </div>
+          <div style={{background:"var(--bg)",borderRadius:"var(--r-sm)",padding:"16px 22px",maxWidth:380,margin:"0 auto 28px",textAlign:"left"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>Récapitulatif des accès</div>
+            {[["Identifiant",form.login],["Mot de passe",form.password],["Email",form.email]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--t6)"}}>
+                <span style={{fontSize:12.5,color:"var(--t3)",fontWeight:500}}>{l}</span>
+                <span style={{fontSize:12.5,fontWeight:700,color:"var(--t1)",fontFamily:"monospace"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+            <button onClick={()=>{ setStep(1); setForm({prenom:"",nom:"",email:"",tel:"",ville:"",role:"Membre",login:"",password:"",confirm:"",cotisation:"non payée",statut:"actif"}); }} 
+              style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>
+              Ajouter un autre membre
+            </button>
+            <button className="send-btn" style={{width:"auto",padding:"10px 28px"}} onClick={onCreated}>
+              <Icon name="users" size={15} color="white" /> Voir la liste des membres
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* PLACEHOLDER */
+const CONTACT_GRADS=["linear-gradient(135deg,#667eea,#764ba2)","linear-gradient(135deg,#11998e,#38ef7d)","linear-gradient(135deg,#f7971e,#ffd200)","linear-gradient(135deg,#fc5c7d,#6a3093)","linear-gradient(135deg,#2563eb,#3b82f6)","linear-gradient(135deg,#059669,#10b981)","linear-gradient(135deg,#dc2626,#ef4444)","linear-gradient(135deg,#0891b2,#06b6d4)"];
+const LS_KEY="chtis_contacts";
+
+function ContactModal({ contact, onSave, onClose }) {
+  const empty={prenom:"",nom:"",email:"",tel:"",organisation:"",notes:""};
+  const [form,setForm]=useState(contact?{...contact}:empty);
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const valid=form.prenom.trim()&&form.nom.trim();
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:18,padding:"28px",width:480,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{fontSize:16,fontWeight:800,color:"var(--t1)"}}>{contact?"Modifier le contact":"Nouveau contact"}</div>
+          <button onClick={onClose} style={{background:"#f3f4f6",border:"none",width:30,height:30,borderRadius:8,fontSize:16,cursor:"pointer",color:"var(--t3)"}}>✕</button>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div className="clabel">Prénom *</div><input className="ci" value={form.prenom} onChange={e=>f("prenom",e.target.value)} placeholder="Jean"/></div>
+            <div><div className="clabel">Nom *</div><input className="ci" value={form.nom} onChange={e=>f("nom",e.target.value)} placeholder="Dupont"/></div>
+          </div>
+          <div><div className="clabel">Email</div><input className="ci" type="email" value={form.email} onChange={e=>f("email",e.target.value)} placeholder="jean.dupont@email.fr"/></div>
+          <div><div className="clabel">Téléphone</div><input className="ci" value={form.tel} onChange={e=>f("tel",e.target.value)} placeholder="+33 6 00 00 00 00"/></div>
+          <div><div className="clabel">Organisation / Ville</div><input className="ci" value={form.organisation} onChange={e=>f("organisation",e.target.value)} placeholder="Sarthe"/></div>
+          <div><div className="clabel">Notes</div><textarea className="ci" rows={3} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Informations complémentaires..." style={{resize:"vertical",minHeight:72}}/></div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{padding:"9px 20px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+          <button disabled={!valid} onClick={()=>valid&&onSave(form)} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"var(--indigo-grad)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14,opacity:valid?1:.5}}>
+            {contact?"Enregistrer":"Ajouter"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Contacts({ canDo }) {
+  canDo = canDo || (()=>true);
+  const [contacts,setContacts]=useState([]);
+  const [search,setSearch]=useState("");
+  const [showAdd,setShowAdd]=useState(false);
+  const [editContact,setEditContact]=useState(null);
+  const [deleteId,setDeleteId]=useState(null);
+  const [loading,setLoading]=useState(true);
+
+  async function load(){
+    try{
+      const {data,error}=await sb.from("contacts").select("*").order("id",{ascending:true});
+      if(error) throw error;
+      setContacts(data||[]);
+    }catch(e){
+      try{const s=localStorage.getItem(LS_KEY);if(s){setContacts(JSON.parse(s));}}catch(e2){}
+    }
+    setLoading(false);
+  }
+
+  async function addContact(form){
+    const newC={...form,id:Date.now()};
+    try{
+      await sb.from("contacts").insert([newC]);
+      setContacts(prev=>[...prev,newC]);
+    }catch(e){}
+    setShowAdd(false);
+  }
+
+  async function updateContact(form){
+    const updated={...form,id:editContact.id};
+    try{
+      await sb.from("contacts").update(updated).eq("id",editContact.id);
+      setContacts(prev=>prev.map(c=>c.id===editContact.id?updated:c));
+    }catch(e){}
+    setEditContact(null);
+  }
+
+  async function deleteContact(){
+    try{
+      await sb.from("contacts").delete().eq("id",deleteId);
+      setContacts(prev=>prev.filter(c=>c.id!==deleteId));
+    }catch(e){}
+    setDeleteId(null);
+  }
+
+  React.useEffect(()=>{load();},[]);
+
+  const filtered=contacts.filter(c=>{
+    const q=search.toLowerCase();
+    return !q||`${c.prenom} ${c.nom} ${c.email} ${c.organisation}`.toLowerCase().includes(q);
+  });
+
+  if(loading) return <div style={{textAlign:"center",padding:"60px 0",color:"var(--t4)"}}>Chargement des contacts…</div>;
+
+  return (
+    <div>
+      <div className="card" style={{marginBottom:20,padding:"16px 20px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <div style={{position:"relative",flex:1,minWidth:200}}>
+            <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}>
+              <Icon name="search" size={16} color="#9ca3af"/>
+            </span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un contact..." style={{width:"100%",padding:"9px 12px 9px 36px",border:"1px solid #e5e7eb",borderRadius:10,fontSize:14,outline:"none",background:"#f9fafb",color:"var(--t1)"}}/>
+          </div>
+          <div style={{color:"var(--t3)",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>{filtered.length} contact{filtered.length!==1?"s":""}</div>
+          {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowAdd(true)}><Icon name="plus" size={14} color="white"/> Ajouter</button>}
+        </div>
+      </div>
+
+      {filtered.length===0&&(
+        <div className="card" style={{padding:"60px 24px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📭</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:6}}>{search?"Aucun résultat":"Aucun contact"}</div>
+          <div style={{fontSize:13,color:"var(--t4)"}}>{search?"Essayez un autre terme de recherche.":"Cliquez sur « Ajouter » pour créer votre premier contact."}</div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:18}}>
+        {filtered.map((c,i)=>{
+          const grad=CONTACT_GRADS[i%CONTACT_GRADS.length];
+          const initials=((c.prenom||"?")[0]+(c.nom||"?")[0]).toUpperCase();
+          return (
+            <div key={c.id} className="card" style={{padding:0,overflow:"hidden",transition:"transform .2s,box-shadow .2s"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 12px 32px rgba(0,0,0,.12)";}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+              <div style={{background:grad,padding:"22px 20px 18px",position:"relative"}}>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,.22)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",fontWeight:800,color:"white",flexShrink:0,border:"2px solid rgba(255,255,255,.35)"}}>
+                    {initials}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:800,color:"white",fontSize:15,lineHeight:1.2,wordBreak:"break-word"}}>{c.prenom} {c.nom}</div>
+                    {c.organisation&&<div style={{color:"rgba(255,255,255,.8)",fontSize:12,marginTop:3}}>{c.organisation}</div>}
+                  </div>
+                </div>
+                <div style={{position:"absolute",top:10,right:10,display:"flex",gap:4}}>
+                  {canDo("modifier")&&<button onClick={()=>setEditContact(c)} title="Modifier" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>✏️</button>}
+                  {canDo("supprimer")&&<button onClick={()=>setDeleteId(c.id)} title="Supprimer" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(255,255,255,.2)",color:"white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🗑</button>}
+                </div>
+              </div>
+              <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:8}}>
+                {c.email&&<a href={`mailto:${c.email}`} style={{display:"flex",alignItems:"center",gap:8,color:"var(--t2)",textDecoration:"none",fontSize:13,wordBreak:"break-all"}}>
+                  <span style={{width:18,flexShrink:0,textAlign:"center"}}>✉️</span> {c.email}
+                </a>}
+                {c.tel&&<div style={{display:"flex",alignItems:"center",gap:8,color:"var(--t2)",fontSize:13}}>
+                  <span style={{width:18,flexShrink:0,textAlign:"center"}}>📞</span> {c.tel}
+                </div>}
+                {c.notes&&<div style={{display:"flex",alignItems:"flex-start",gap:8,color:"var(--t3)",fontSize:12,fontStyle:"italic",marginTop:2}}>
+                  <span style={{width:18,flexShrink:0,textAlign:"center",marginTop:1}}>📝</span>
+                  <span>{c.notes}</span>
+                </div>}
+                {!c.email&&!c.tel&&!c.notes&&<div style={{color:"var(--t4)",fontSize:12,textAlign:"center",padding:"4px 0"}}>Aucune information supplémentaire</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showAdd&&<ContactModal onSave={addContact} onClose={()=>setShowAdd(false)} />}
+      {editContact&&<ContactModal contact={editContact} onSave={updateContact} onClose={()=>setEditContact(null)} />}
+      {deleteId&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDeleteId(null)}>
+          <div style={{background:"white",borderRadius:18,padding:"28px",width:380,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⚠️</div>
+            <div style={{fontWeight:800,fontSize:16,color:"var(--t1)",marginBottom:8}}>Supprimer ce contact ?</div>
+            <div style={{color:"var(--t3)",fontSize:13,marginBottom:22}}>Cette action est irréversible.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={()=>setDeleteId(null)} style={{padding:"9px 22px",border:"1px solid #e5e7eb",borderRadius:10,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+              <button onClick={deleteContact} style={{padding:"9px 22px",border:"none",borderRadius:10,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:700,cursor:"pointer",fontSize:14}}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════
+   ÉVÉNEMENTS
+══════════════════════════════════ */
+const EVT_LS="chtis_events";
+const EVT_COLORS=[
+  {hex:"#667eea",name:"Violet"},{hex:"#2563eb",name:"Bleu"},{hex:"#0891b2",name:"Cyan"},
+  {hex:"#059669",name:"Vert"},{hex:"#11998e",name:"Émeraude"},{hex:"#d97706",name:"Ambre"},
+  {hex:"#f7971e",name:"Orange"},{hex:"#fc5c7d",name:"Rose"},{hex:"#dc2626",name:"Rouge"},{hex:"#7c3aed",name:"Pourpre"}
+];
+const EVT_STATIC=[
+  {id:"e1",titre:"Assemblée Générale 2026",date:"2026-06-15",heure:"14:00",lieu:"Salle des fêtes, Le Mans",description:"Assemblée générale annuelle de l'association. Ordre du jour : bilan financier, renouvellement du bureau, projets 2027.",color:"#667eea",participants:[]},
+  {id:"e2",titre:"Repas de printemps",date:"2026-05-25",heure:"12:30",lieu:"Restaurant La Sarthe, Le Mans",description:"Repas convivial entre adhérents.",color:"#059669",participants:[]},
+  {id:"e3",titre:"Randonnée découverte",date:"2026-07-06",heure:"09:00",lieu:"Forêt de Bercé",description:"Randonnée en forêt pour les adhérents et leurs familles. Pique-nique tiré du sac.",color:"#f7971e",participants:[]},
+];
+const MOIS_FR=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MOIS_COURT=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"];
+const JOURS_FR=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+
+function daysUntil(dateStr){
+  const d=new Date(dateStr),t=new Date();
+  t.setHours(0,0,0,0);d.setHours(0,0,0,0);
+  return Math.round((d-t)/(1000*60*60*24));
+}
+function relativeDate(dateStr){
+  const n=daysUntil(dateStr);
+  if(n===0) return{label:"Aujourd'hui",color:"#059669",bg:"#f0fdf4"};
+  if(n===1) return{label:"Demain",color:"#d97706",bg:"#fffbeb"};
+  if(n>0&&n<=7) return{label:`Dans ${n} jours`,color:"#2563eb",bg:"#eff6ff"};
+  if(n<0&&n>=-1) return{label:"Hier",color:"#6b7280",bg:"#f9fafb"};
+  if(n<0) return{label:"Passé",color:"#9ca3af",bg:"#f3f4f6"};
+  return{label:null};
+}
+
+function EventModal({evt,members,onSave,onClose,onSend}){
+  const empty={titre:"",date:new Date().toISOString().split("T")[0],heure:"18:00",lieu:"",description:"",color:"#667eea",participants:[]};
+  const [form,setForm]=useState(evt?{...evt}:empty);
+  const [tab,setTab]=useState("info");
+  const [partSearch,setPartSearch]=useState("");
+  const [sendInvite,setSendInvite]=useState(false);
+  const [sending,setSending]=useState(false);
+  const [sent,setSent]=useState(false);
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const valid=form.titre.trim()&&form.date;
+  function togglePart(id){setForm(p=>({...p,participants:p.participants.includes(id)?p.participants.filter(x=>x!==id):[...p.participants,id]}));}
+  const filtParts=members.filter(m=>{const q=partSearch.toLowerCase();return!q||`${m.prenom} ${m.nom}`.toLowerCase().includes(q);});
+
+  function buildDefaultSubject(){return`Invitation — ${form.titre||"notre événement"}`;}
+  function buildDefaultMessage(){
+    const dateStr=form.date?new Date(form.date).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"";
+    return`Bonjour [Prénom],\n\nNous avons le plaisir de vous inviter à notre événement :\n\n📌 ${form.titre||"Événement"}\n📅 ${dateStr}${form.heure?" à "+form.heure:""}${form.lieu?"\n📍 "+form.lieu:""}\n${form.description?"\n"+form.description+"\n":""}\nMerci de bien vouloir participer. Votre présence sera très appréciée !\n\nCordialement,\nL'équipe de Ch'tis en Maine`;
+  }
+  const [inviteSubject,setInviteSubject]=useState("");
+  const [inviteMessage,setInviteMessage]=useState("");
+
+  function toggleInvite(checked){
+    setSendInvite(checked);
+    if(checked){
+      setInviteSubject(buildDefaultSubject());
+      setInviteMessage(buildDefaultMessage());
+    }
+  }
+
+  async function handleSave(){
+    if(!valid) return;
+    onSave(form);
+    if(sendInvite && onSend && form.participants.length>0){
+      setSending(true);
+      const subject=inviteSubject||buildDefaultSubject();
+      for(const id of form.participants){
+        const m=members.find(mb=>(mb.id||String(mb.id))===id||(mb.id===id));
+        if(!m||!m.email||!m.email.includes("@")) continue;
+        const personalMsg=(inviteMessage||buildDefaultMessage()).replace(/\[Prénom\]/g,m.prenom||"");
+        await onSend(m.email, m.prenom, m.nom, subject, personalMsg);
+      }
+      setSending(false);
+      setSent(true);
+    }
+  }
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:22,width:540,boxShadow:"0 32px 80px rgba(0,0,0,.22)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",maxHeight:"92vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header coloré */}
+        <div style={{background:form.color,padding:"22px 24px 18px",position:"relative",flexShrink:0}}>
+          <button onClick={onClose} style={{position:"absolute",top:14,right:14,width:32,height:32,borderRadius:10,border:"none",background:"rgba(255,255,255,.22)",color:"white",cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <div style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.7)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>{evt?"Modifier l'événement":"Nouvel événement"}</div>
+          <div style={{fontSize:form.titre?20:16,fontWeight:800,color:"white",opacity:form.titre?1:.5}}>{form.titre||"Titre de l'événement…"}</div>
+          {form.date&&<div style={{fontSize:12.5,color:"rgba(255,255,255,.85)",marginTop:6}}>📅 {new Date(form.date).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}{form.heure&&` · ${form.heure}`}</div>}
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",borderBottom:"2px solid #f0f0f0",background:"#fafafa",flexShrink:0}}>
+          {[
+            {id:"info",label:"📋 Infos"},
+            {id:"participants",label:`👥 Participants (${form.participants.length})`},
+            {id:"email",label:"✉️ Invitation"},
+          ].map(t=>(
+            <button key={t.id} onClick={()=>{setTab(t.id);if(t.id==="email"&&!inviteSubject){setInviteSubject(buildDefaultSubject());setInviteMessage(buildDefaultMessage());}}}
+              style={{flex:1,padding:"12px 6px",border:"none",background:"transparent",color:tab===t.id?(t.id==="email"?"#059669":"#4338ca"):"var(--t3)",fontWeight:tab===t.id?800:600,fontSize:12.5,cursor:"pointer",borderBottom:tab===t.id?`2.5px solid ${t.id==="email"?"#059669":"#667eea"}`:"2.5px solid transparent",transition:"all .15s",marginBottom:-2}}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {/* Body scrollable */}
+        <div style={{overflowY:"auto",flex:1,padding:"22px 24px"}}>
+          {tab==="info"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <div>
+                <div className="clabel">Titre de l'événement *</div>
+                <input className="ci" value={form.titre} onChange={e=>f("titre",e.target.value)} placeholder="Assemblée générale, Repas, Randonnée…" style={{fontSize:15,fontWeight:600}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><div className="clabel">Date *</div><input className="ci" type="date" value={form.date} onChange={e=>f("date",e.target.value)}/></div>
+                <div><div className="clabel">Heure</div><input className="ci" type="time" value={form.heure} onChange={e=>f("heure",e.target.value)}/></div>
+              </div>
+              <div>
+                <div className="clabel">Lieu</div>
+                <input className="ci" value={form.lieu} onChange={e=>f("lieu",e.target.value)} placeholder="📍 Salle des fêtes, Le Mans…"/>
+              </div>
+              <div>
+                <div className="clabel">Description</div>
+                <textarea className="ci" rows={4} value={form.description} onChange={e=>f("description",e.target.value)} placeholder="Décrivez l'événement, le programme, les infos pratiques…" style={{resize:"vertical",minHeight:90,lineHeight:1.6}}/>
+              </div>
+              <div>
+                <div className="clabel">Couleur de l'événement</div>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:6}}>
+                  {EVT_COLORS.map(c=>(
+                    <div key={c.hex} onClick={()=>f("color",c.hex)} title={c.name}
+                      style={{width:32,height:32,borderRadius:10,background:c.hex,cursor:"pointer",border:form.color===c.hex?"3px solid #1e293b":"3px solid transparent",transform:form.color===c.hex?"scale(1.18)":"scale(1)",transition:"all .15s",boxShadow:form.color===c.hex?"0 4px 12px "+c.hex+"66":"none"}}/>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {tab==="participants"&&(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontSize:13,color:"var(--t3)",fontWeight:600}}>{form.participants.length} membre{form.participants.length!==1?"s":""} inscrit{form.participants.length!==1?"s":""}</div>
+                <button onClick={()=>setForm(p=>({...p,participants:members.map(m=>m.id||String(m.id))}))} style={{fontSize:12,padding:"4px 12px",border:"1px solid #e5e7eb",borderRadius:8,background:"white",cursor:"pointer",color:"var(--t2)",fontWeight:600}}>Tous sélectionner</button>
+              </div>
+              <input value={partSearch} onChange={e=>setPartSearch(e.target.value)} placeholder="Rechercher un membre…" style={{width:"100%",padding:"8px 12px",border:"1px solid #e5e7eb",borderRadius:10,fontSize:13,outline:"none",marginBottom:10,boxSizing:"border-box"}}/>
+              <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:220,overflowY:"auto"}}>
+                {filtParts.map(m=>{
+                  const on=form.participants.includes(m.id||String(m.id));
+                  return(
+                    <label key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:12,cursor:"pointer",background:on?"#f5f3ff":"#fafafa",border:`1.5px solid ${on?"#c4b5fd":"transparent"}`,transition:"all .12s"}}>
+                      <input type="checkbox" checked={on} onChange={()=>togglePart(m.id||String(m.id))} style={{accentColor:"#667eea",width:16,height:16,flexShrink:0}}/>
+                      <div style={{width:34,height:34,borderRadius:"50%",background:m.grad||"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:12,fontWeight:700,flexShrink:0}}>
+                        {((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase()}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:13.5,color:"var(--t1)"}}>{m.prenom} {m.nom}</div>
+                        <div style={{fontSize:11.5,color:"var(--t4)"}}>{m.email||<span style={{color:"#dc2626"}}>Pas d'email</span>}</div>
+                      </div>
+                      {on&&<span style={{fontSize:16,color:"#667eea"}}>✓</span>}
+                    </label>
+                  );
+                })}
+              </div>
+
+            </div>
+          )}
+
+          {tab==="email"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {/* Résumé destinataires */}
+              <div style={{padding:"12px 16px",borderRadius:12,background:"#f0fdf4",border:"1.5px solid #bbf7d0",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:22}}>👥</span>
+                <div>
+                  <div style={{fontWeight:800,fontSize:13,color:"#065f46"}}>
+                    {form.participants.filter(id=>{const m=members.find(mb=>(mb.id||String(mb.id))===id);return m&&m.email&&m.email.includes("@");}).length} destinataire{form.participants.length!==1?"s":""} avec email valide
+                  </div>
+                  <div style={{fontSize:12,color:"#059669"}}>
+                    {form.participants.length===0?"Aucun participant sélectionné — ajoutez des membres dans l'onglet Participants.":"L'email sera personnalisé avec le prénom de chaque membre."}
+                  </div>
+                </div>
+              </div>
+
+              {form.participants.length===0?(
+                <div style={{textAlign:"center",padding:"30px 20px",color:"var(--t4)",fontSize:13}}>
+                  👆 Allez dans l'onglet <strong>Participants</strong> pour sélectionner les membres à inviter.
+                </div>
+              ):(
+                <>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:800,color:"var(--t2)",textTransform:"uppercase",letterSpacing:".05em",marginBottom:6}}>Sujet de l'e-mail</div>
+                    <input value={inviteSubject} onChange={e=>setInviteSubject(e.target.value)}
+                      style={{width:"100%",padding:"10px 14px",border:"1.5px solid #e5e7eb",borderRadius:11,fontSize:13.5,fontWeight:600,outline:"none",background:"white",color:"var(--t1)",boxSizing:"border-box",transition:"border .15s"}}
+                      onFocus={e=>e.target.style.borderColor="#667eea"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
+                  </div>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div style={{fontSize:12,fontWeight:800,color:"var(--t2)",textTransform:"uppercase",letterSpacing:".05em"}}>Message</div>
+                      <button onClick={()=>{setInviteSubject(buildDefaultSubject());setInviteMessage(buildDefaultMessage());}}
+                        style={{fontSize:11.5,padding:"4px 12px",border:"1px solid #e5e7eb",borderRadius:8,background:"white",cursor:"pointer",color:"var(--t3)",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                        ↺ Réinitialiser
+                      </button>
+                    </div>
+                    <textarea value={inviteMessage} onChange={e=>setInviteMessage(e.target.value)} rows={9}
+                      style={{width:"100%",padding:"12px 14px",border:"1.5px solid #e5e7eb",borderRadius:11,fontSize:13,outline:"none",background:"white",color:"var(--t2)",resize:"vertical",lineHeight:1.7,fontFamily:"inherit",boxSizing:"border-box",transition:"border .15s"}}
+                      onFocus={e=>e.target.style.borderColor="#667eea"} onBlur={e=>e.target.style.borderColor="#e5e7eb"}/>
+                    <div style={{fontSize:11.5,color:"#7c3aed",marginTop:6,display:"flex",alignItems:"center",gap:5}}>
+                      💡 <span><strong>[Prénom]</strong> sera remplacé par le prénom de chaque membre lors de l'envoi.</span>
+                    </div>
+                  </div>
+                  <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"12px 14px",borderRadius:12,border:`2px solid ${sendInvite?"#667eea":"#e5e7eb"}`,background:sendInvite?"#f5f3ff":"#fafafa",transition:"all .15s"}}>
+                    <input type="checkbox" checked={sendInvite} onChange={e=>setSendInvite(e.target.checked)} style={{accentColor:"#667eea",width:18,height:18,flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:800,fontSize:13.5,color:sendInvite?"#4338ca":"var(--t1)"}}>Envoyer cet email lors de la création</div>
+                      <div style={{fontSize:12,color:"var(--t3)",marginTop:1}}>Les invitations seront envoyées automatiquement au moment de sauvegarder.</div>
+                    </div>
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        {/* Footer */}
+        <div style={{padding:"16px 24px",borderTop:"1px solid #f0f0f0",display:"flex",gap:10,justifyContent:"flex-end",flexShrink:0,background:"white",flexWrap:"wrap",alignItems:"center"}}>
+          {sending&&<div style={{fontSize:13,color:"#667eea",fontWeight:700,flex:1}}>✉️ Envoi des invitations en cours…</div>}
+          {sent&&<div style={{fontSize:13,color:"#059669",fontWeight:700,flex:1}}>✅ Invitations envoyées !</div>}
+          <button onClick={onClose} style={{padding:"11px 22px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:600,cursor:"pointer",fontSize:14}}>Annuler</button>
+          <button disabled={!valid||sending} onClick={handleSave}
+            style={{padding:"11px 26px",border:"none",borderRadius:12,background:(valid&&!sending)?form.color:"#e5e7eb",color:"white",fontWeight:800,cursor:"pointer",fontSize:14,opacity:(valid&&!sending)?1:.6,boxShadow:(valid&&!sending)?`0 6px 20px ${form.color}55`:"none",transition:"all .2s",display:"flex",alignItems:"center",gap:8}}>
+            <span>{sending?"Envoi…":evt?(sendInvite?"💾 Enregistrer & inviter":"💾 Enregistrer"):(sendInvite?"✨ Créer & inviter":"✨ Créer l'événement")}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventsPage({members, onSend, canDo}){
+  canDo = canDo || (()=>true);
+  const [events,setEvents]=useState([]);
+  const [view,setView]=useState("list");
+  const [calDate,setCalDate]=useState(new Date());
+  const [showModal,setShowModal]=useState(false);
+  const [editEvt,setEditEvt]=useState(null);
+  const [deleteId,setDeleteId]=useState(null);
+  const [detailEvt,setDetailEvt]=useState(null);
+
+  const [loadingEvts,setLoadingEvts]=useState(true);
+
+  async function load(){
+    setLoadingEvts(true);
+    try{
+      const {data,error}=await sb.from("evenements").select("*").order("date",{ascending:true});
+      if(!error&&data){ setEvents(data.map(e=>({...e,participants:e.participants||[]}))); setLoadingEvts(false); return; }
+    }catch(e){}
+    try{const s=localStorage.getItem(EVT_LS);if(s){setEvents(JSON.parse(s));setLoadingEvts(false);return;}}catch(e){}
+    setEvents(EVT_STATIC);
+    setLoadingEvts(false);
+  }
+
+  React.useEffect(()=>{load();},[]);
+
+  async function addEvent(form){
+    const ev={...form,id:"ev"+Date.now(),participants:form.participants||[]};
+    try{ await sb.from("evenements").insert([ev]); }catch(e){}
+    setEvents(prev=>[...prev,ev]);
+    setShowModal(false);
+  }
+
+  async function editEvent(form){
+    const ev={...form,id:editEvt.id,participants:form.participants||[]};
+    try{ await sb.from("evenements").update(ev).eq("id",ev.id); }catch(e){}
+    setEvents(prev=>prev.map(e=>e.id===ev.id?ev:e));
+    setEditEvt(null);
+  }
+
+  async function deleteEvent(){
+    try{ await sb.from("evenements").delete().eq("id",deleteId); }catch(e){}
+    setEvents(prev=>prev.filter(e=>e.id!==deleteId));
+    setDeleteId(null);
+  }
+
+  const today=new Date().toISOString().split("T")[0];
+  const sorted=[...events].sort((a,b)=>a.date.localeCompare(b.date));
+  const upcoming=sorted.filter(e=>e.date>=today);
+  const past=sorted.filter(e=>e.date<today).reverse();
+  const totalParts=events.reduce((a,e)=>a+e.participants.length,0);
+  const nextEvt=upcoming[0];
+
+  /* ── STATS ── */
+  const Stats=()=>(
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
+      {[
+        {label:"À venir",val:upcoming.length,icon:"📅",bg:"linear-gradient(135deg,#667eea,#764ba2)"},
+        {label:"Passés",val:past.length,icon:"✅",bg:"linear-gradient(135deg,#11998e,#38ef7d)"},
+        {label:"Participants total",val:totalParts,icon:"👥",bg:"linear-gradient(135deg,#f7971e,#ffd200)"},
+      ].map(s=>(
+        <div key={s.label} className="sc" style={{background:s.bg}}>
+          <div className="sc-overlay"/><div className="sc-pattern"/><div className="sc-pattern2"/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",position:"relative",zIndex:1}}>
+            <div><div className="sc-label">{s.label}</div><div className="sc-val">{s.val}</div></div>
+            <div style={{fontSize:28,opacity:.7}}>{s.icon}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  /* ── LISTE ── */
+  function ListView(){
+    function EvtCard({e,isPast}){
+      const d=new Date(e.date);
+      const day=String(d.getDate()).padStart(2,"0");
+      const mon=MOIS_COURT[d.getMonth()].toUpperCase();
+      const rel=relativeDate(e.date);
+      const parts=members.filter(m=>e.participants.includes(m.id||String(m.id)));
+      return(
+        <div style={{display:"flex",gap:0,borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.07)",background:"white",border:"1px solid #f0f0f0",opacity:isPast?.7:1,transition:"transform .18s,box-shadow .18s",cursor:"pointer"}}
+          onMouseEnter={ev=>{ev.currentTarget.style.transform="translateY(-3px)";ev.currentTarget.style.boxShadow="0 8px 28px rgba(0,0,0,.12)";}}
+          onMouseLeave={ev=>{ev.currentTarget.style.transform="";ev.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,.07)";}}>
+          {/* Date bloc */}
+          <div style={{width:76,background:isPast?"#f3f4f6":e.color,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px 8px",flexShrink:0}}>
+            <div style={{fontSize:28,fontWeight:900,color:isPast?"#9ca3af":"white",lineHeight:1}}>{day}</div>
+            <div style={{fontSize:11,fontWeight:800,color:isPast?"#9ca3af":"rgba(255,255,255,.85)",letterSpacing:1,marginTop:3}}>{mon}</div>
+            {e.heure&&<div style={{fontSize:10.5,color:isPast?"#9ca3af":"rgba(255,255,255,.75)",marginTop:6,background:"rgba(0,0,0,.12)",padding:"2px 6px",borderRadius:6}}>{e.heure}</div>}
+          </div>
+          {/* Content */}
+          <div style={{flex:1,padding:"14px 18px",minWidth:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
+                  <div style={{fontWeight:800,fontSize:15,color:"var(--t1)"}}>{e.titre}</div>
+                  {rel.label&&!isPast&&<span style={{fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:20,background:rel.bg,color:rel.color}}>{rel.label}</span>}
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:12,fontSize:12.5,color:"var(--t3)",marginBottom:6}}>
+                  {e.lieu&&<span style={{display:"flex",alignItems:"center",gap:4}}>📍 {e.lieu}</span>}
+                  <span style={{display:"flex",alignItems:"center",gap:4}}>👥 {e.participants.length} participant{e.participants.length!==1?"s":""}</span>
+                </div>
+                {e.description&&<div style={{fontSize:12.5,color:"var(--t4)",lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{e.description}</div>}
+                {parts.length>0&&(
+                  <div style={{display:"flex",marginTop:8,gap:-6}}>
+                    {parts.slice(0,6).map((m,i)=>(
+                      <div key={m.id} title={`${m.prenom} ${m.nom}`} style={{width:24,height:24,borderRadius:"50%",background:m.grad||"linear-gradient(135deg,#667eea,#764ba2)",border:"2px solid white",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:9,fontWeight:700,marginLeft:i?-6:0,zIndex:parts.length-i}}>
+                        {((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase()}
+                      </div>
+                    ))}
+                    {parts.length>6&&<div style={{width:24,height:24,borderRadius:"50%",background:"#e5e7eb",border:"2px solid white",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--t3)",fontSize:9,fontWeight:700,marginLeft:-6}}>+{parts.length-6}</div>}
+                  </div>
+                )}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
+                <button onClick={e2=>{e2.stopPropagation();setDetailEvt(e);}} title="Voir le détail" style={{width:34,height:34,border:"1px solid #e5e7eb",borderRadius:10,background:"#f8fafc",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#eff6ff"} onMouseLeave={ev=>ev.currentTarget.style.background="#f8fafc"}>👁</button>
+                {canDo("modifier")&&<button onClick={e2=>{e2.stopPropagation();setEditEvt(e);}} title="Modifier" style={{width:34,height:34,border:"1px solid #e5e7eb",borderRadius:10,background:"#f8fafc",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fefce8"} onMouseLeave={ev=>ev.currentTarget.style.background="#f8fafc"}>✏️</button>}
+                {canDo("supprimer")&&<button onClick={e2=>{e2.stopPropagation();setDeleteId(e.id);}} title="Supprimer" style={{width:34,height:34,border:"1px solid #fecaca",borderRadius:10,background:"#fef2f2",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}} onMouseEnter={ev=>ev.currentTarget.style.background="#fee2e2"} onMouseLeave={ev=>ev.currentTarget.style.background="#fef2f2"}>🗑</button>}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return(
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {upcoming.length>0&&<>
+          <div style={{display:"flex",alignItems:"center",gap:10,margin:"4px 0 8px"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".08em"}}>À venir</div>
+            <div style={{flex:1,height:1,background:"#f0f0f0"}}/>
+            <div style={{fontSize:11,fontWeight:700,color:"#059669",background:"#f0fdf4",padding:"2px 10px",borderRadius:20}}>{upcoming.length} événement{upcoming.length>1?"s":""}</div>
+          </div>
+          {upcoming.map(e=><EvtCard key={e.id} e={e} isPast={false}/>)}
+        </>}
+        {past.length>0&&<>
+          <div style={{display:"flex",alignItems:"center",gap:10,margin:"16px 0 8px"}}>
+            <div style={{fontSize:11,fontWeight:800,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".08em"}}>Passés</div>
+            <div style={{flex:1,height:1,background:"#f0f0f0"}}/>
+          </div>
+          {past.map(e=><EvtCard key={e.id} e={e} isPast={true}/>)}
+        </>}
+        {sorted.length===0&&(
+          <div style={{textAlign:"center",padding:"70px 30px",background:"white",borderRadius:20,border:"2px dashed #e5e7eb"}}>
+            <div style={{fontSize:52,marginBottom:14}}>🗓️</div>
+            <div style={{fontWeight:800,fontSize:17,color:"var(--t1)",marginBottom:8}}>Aucun événement planifié</div>
+            <div style={{fontSize:14,color:"var(--t4)",marginBottom:22}}>Créez votre premier événement pour commencer à organiser l'agenda de l'association.</div>
+            {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)} style={{margin:"0 auto",display:"inline-flex"}}><Icon name="plus" size={14} color="white"/> Créer un événement</button>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ── CALENDRIER ── */
+  function CalendarView(){
+    const y=calDate.getFullYear(),mo=calDate.getMonth();
+    const firstDay=new Date(y,mo,1).getDay();
+    const offset=(firstDay+6)%7;
+    const dim=new Date(y,mo+1,0).getDate();
+    const cells=[];
+    for(let i=0;i<offset;i++) cells.push(null);
+    for(let d=1;d<=dim;d++) cells.push(d);
+    function evs(d){
+      const ds=`${y}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      return events.filter(e=>e.date===ds);
+    }
+    const tD=new Date();
+    const mUpcoming=upcoming.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===mo;});
+    return(
+      <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:18,alignItems:"start"}}>
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          {/* Cal header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 24px 16px",borderBottom:"1px solid #f5f5f5"}}>
+            <button onClick={()=>setCalDate(new Date(y,mo-1,1))} style={{width:38,height:38,border:"1px solid #e5e7eb",borderRadius:11,background:"white",cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--t2)"}}>‹</button>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontWeight:900,fontSize:20,color:"var(--t1)"}}>{MOIS_FR[mo]}</div>
+              <div style={{fontSize:13,color:"var(--t4)",fontWeight:600}}>{y}</div>
+            </div>
+            <button onClick={()=>setCalDate(new Date(y,mo+1,1))} style={{width:38,height:38,border:"1px solid #e5e7eb",borderRadius:11,background:"white",cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--t2)"}}>›</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"12px 16px 16px",gap:5}}>
+            {JOURS_FR.map(j=><div key={j} style={{textAlign:"center",fontSize:12,fontWeight:800,color:"var(--t4)",padding:"4px 0",letterSpacing:".02em"}}>{j}</div>)}
+            {cells.map((d,i)=>{
+              if(!d) return <div key={"x"+i}/>;
+              const dayEvs=evs(d);
+              const isToday=d===tD.getDate()&&mo===tD.getMonth()&&y===tD.getFullYear();
+              return(
+                <div key={d}
+                  onClick={()=>dayEvs.length===1?setDetailEvt(dayEvs[0]):null}
+                  style={{minHeight:80,borderRadius:12,background:isToday?"linear-gradient(135deg,#f5f3ff,#ede9fe)":dayEvs.length?"#fafbff":"white",border:`1.5px solid ${isToday?"#a78bfa":dayEvs.length?"#e0e7ff":"#f3f4f6"}`,padding:"7px 5px",cursor:dayEvs.length?"pointer":"default",transition:"all .15s"}}
+                  onMouseEnter={ev=>{if(dayEvs.length)ev.currentTarget.style.borderColor="#a78bfa";}}
+                  onMouseLeave={ev=>{ev.currentTarget.style.borderColor=isToday?"#a78bfa":dayEvs.length?"#e0e7ff":"#f3f4f6";}}>
+                  <div style={{textAlign:"center",width:24,height:24,borderRadius:"50%",background:isToday?"#7c3aed":"transparent",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 4px",fontSize:13,fontWeight:isToday?800:600,color:isToday?"white":"var(--t2)"}}>{d}</div>
+                  {dayEvs.map(ev=>(
+                    <div key={ev.id} onClick={e=>{e.stopPropagation();setDetailEvt(ev);}} title={ev.titre}
+                      style={{background:ev.color,borderRadius:6,padding:"3px 5px",fontSize:9.5,fontWeight:700,color:"white",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}}>
+                      {ev.heure&&<span style={{opacity:.8}}>{ev.heure} </span>}{ev.titre}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {/* Sidebar ce mois */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:800,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:12}}>Ce mois — {MOIS_FR[mo]}</div>
+            {mUpcoming.length===0?(
+              <div style={{color:"var(--t4)",fontSize:13,textAlign:"center",padding:"16px 0"}}>Aucun événement ce mois</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {mUpcoming.map(e=>{
+                  const d=new Date(e.date);
+                  return(
+                    <div key={e.id} onClick={()=>setDetailEvt(e)} style={{display:"flex",gap:10,alignItems:"center",cursor:"pointer",padding:"8px 10px",borderRadius:10,transition:"background .12s"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.background="#f5f3ff"}
+                      onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+                      <div style={{width:38,height:38,borderRadius:10,background:e.color,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <div style={{fontSize:14,fontWeight:900,color:"white",lineHeight:1}}>{d.getDate()}</div>
+                        <div style={{fontSize:8,fontWeight:700,color:"rgba(255,255,255,.8)",letterSpacing:.5}}>{MOIS_COURT[d.getMonth()]}</div>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:13,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.titre}</div>
+                        <div style={{fontSize:11.5,color:"var(--t4)"}}>{e.heure||"Heure non définie"}{e.lieu&&` · ${e.lieu.split(",")[0]}`}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)} style={{width:"100%",justifyContent:"center",padding:"13px"}}><Icon name="plus" size={15} color="white"/> Nouvel événement</button>}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── DETAIL ── */
+  function DetailModal({e}){
+    const parts=members.filter(m=>e.participants.includes(m.id||String(m.id)));
+    const isPast=e.date<today;
+    const rel=relativeDate(e.date);
+    return(
+      <div className="overlay" onClick={ev=>ev.target===ev.currentTarget&&setDetailEvt(null)}>
+        <div style={{background:"white",borderRadius:22,width:500,boxShadow:"0 32px 80px rgba(0,0,0,.22)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
+          <div style={{background:`linear-gradient(145deg,${e.color},${e.color}cc)`,padding:"28px 26px 22px",position:"relative"}}>
+            <button onClick={()=>setDetailEvt(null)} style={{position:"absolute",top:14,right:14,width:34,height:34,borderRadius:10,border:"none",background:"rgba(255,255,255,.22)",color:"white",cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+            <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
+              <div style={{textAlign:"center",background:"rgba(255,255,255,.2)",borderRadius:14,padding:"10px 14px",flexShrink:0}}>
+                <div style={{fontSize:28,fontWeight:900,color:"white",lineHeight:1}}>{new Date(e.date).getDate()}</div>
+                <div style={{fontSize:11,fontWeight:800,color:"rgba(255,255,255,.8)",letterSpacing:1,marginTop:2}}>{MOIS_COURT[new Date(e.date).getMonth()].toUpperCase()}</div>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                {rel.label&&<span style={{display:"inline-block",background:"rgba(255,255,255,.25)",color:"white",padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:700,marginBottom:8}}>{rel.label}</span>}
+                <div style={{fontWeight:900,fontSize:20,color:"white",lineHeight:1.25,marginBottom:8}}>{e.titre}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {e.heure&&<div style={{color:"rgba(255,255,255,.88)",fontSize:13}}>🕐 {e.heure}</div>}
+                  {e.lieu&&<div style={{color:"rgba(255,255,255,.88)",fontSize:13}}>📍 {e.lieu}</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{padding:"22px 26px",overflowY:"auto",flex:1}}>
+            {e.description&&(
+              <div style={{background:"#f9fafb",borderRadius:12,padding:"14px 16px",marginBottom:20,fontSize:14,color:"var(--t2)",lineHeight:1.7,borderLeft:`3px solid ${e.color}`}}>
+                {e.description}
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontWeight:800,fontSize:14,color:"var(--t1)"}}>👥 Participants</div>
+              <div style={{fontSize:12,color:"var(--t4)",fontWeight:600}}>{parts.length} / {members.length} membres</div>
+            </div>
+            {parts.length===0?(
+              <div style={{color:"var(--t4)",fontSize:13,textAlign:"center",padding:"18px",background:"#f9fafb",borderRadius:10}}>Aucun participant inscrit pour cet événement.</div>
+            ):(
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {parts.map(m=>(
+                  <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 6px 8px",background:"#f5f3ff",borderRadius:24,border:"1px solid #e0e7ff"}}>
+                    <div style={{width:26,height:26,borderRadius:"50%",background:m.grad||"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:10,fontWeight:700}}>
+                      {((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase()}
+                    </div>
+                    <span style={{fontSize:12.5,fontWeight:700,color:"#4338ca"}}>{m.prenom} {m.nom}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{padding:"16px 26px",borderTop:"1px solid #f0f0f0",display:"flex",gap:8,background:"#fafafa"}}>
+            {canDo("modifier")&&<button onClick={()=>{setDetailEvt(null);setEditEvt(e);}} style={{flex:1,padding:"11px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:700,cursor:"pointer",fontSize:13}}>✏️ Modifier</button>}
+            {canDo("supprimer")&&<button onClick={()=>{setDetailEvt(null);setDeleteId(e.id);}} style={{padding:"11px 18px",border:"none",borderRadius:12,background:"#fef2f2",color:"#dc2626",fontWeight:700,cursor:"pointer",fontSize:13}}>🗑</button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <div>
+      {/* Stats */}
+      <Stats/>
+      {/* Controls */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
+        <div style={{display:"flex",background:"#f3f4f6",borderRadius:12,padding:3,gap:2}}>
+          {[{id:"list",label:"☰ Liste"},{id:"cal",label:"📅 Calendrier"}].map(v=>(
+            <button key={v.id} onClick={()=>setView(v.id)}
+              style={{padding:"8px 20px",borderRadius:10,border:"none",background:view===v.id?"white":"transparent",color:view===v.id?"#4338ca":"var(--t3)",fontWeight:view===v.id?800:600,fontSize:13,cursor:"pointer",boxShadow:view===v.id?"0 2px 8px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+        {view==="list"&&canDo("ajouter")&&<button className="add-btn" onClick={()=>setShowModal(true)}><Icon name="plus" size={14} color="white"/> Nouvel événement</button>}
+      </div>
+
+      {view==="list"?<ListView/>:<CalendarView/>}
+
+      {showModal&&<EventModal members={members} onSave={addEvent} onClose={()=>setShowModal(false)} onSend={onSend}/>}
+      {editEvt&&<EventModal evt={editEvt} members={members} onSave={editEvent} onClose={()=>setEditEvt(null)} onSend={onSend}/>}
+      {detailEvt&&<DetailModal e={detailEvt}/>}
+      {deleteId&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setDeleteId(null)}>
+          <div style={{background:"white",borderRadius:20,padding:"32px",width:380,boxShadow:"0 32px 80px rgba(0,0,0,.2)",animation:"sIn .22s ease",margin:"auto",alignSelf:"center",textAlign:"center"}}>
+            <div style={{width:64,height:64,borderRadius:20,background:"#fef2f2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:30}}>⚠️</div>
+            <div style={{fontWeight:900,fontSize:17,color:"var(--t1)",marginBottom:8}}>Supprimer cet événement ?</div>
+            <div style={{color:"var(--t3)",fontSize:13,marginBottom:24,lineHeight:1.5}}>Cette action est définitive. L'événement et tous ses participants seront supprimés.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={()=>setDeleteId(null)} style={{padding:"11px 24px",border:"1.5px solid #e5e7eb",borderRadius:12,background:"white",color:"var(--t2)",fontWeight:700,cursor:"pointer",fontSize:14}}>Annuler</button>
+              <button onClick={deleteEvent} style={{padding:"11px 24px",border:"none",borderRadius:12,background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"white",fontWeight:800,cursor:"pointer",fontSize:14,boxShadow:"0 6px 18px rgba(220,38,38,.35)"}}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── CHANGE PASSWORD MODAL ── */
+function ChangePasswordModal({ admin, onSave, forced, onClose }) {
+  const [newPass, setNewPass] = React.useState("");
+  const [confirm, setConfirm] = React.useState("");
+  const [show, setShow] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [done, setDone] = React.useState(false);
+
+  function handleGenerate(){
+    const p = generatePassword();
+    setNewPass(p); setConfirm(p); setShow(true); setErr("");
+  }
+
+  function handleSave(){
+    if(newPass.length < 6){ setErr("6 caractères minimum"); return; }
+    if(newPass !== confirm){ setErr("Les mots de passe ne correspondent pas"); return; }
+    setDone(true);
+    setTimeout(()=>onSave(newPass), 800);
+  }
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:"var(--card)",borderRadius:24,width:"100%",maxWidth:440,padding:36,boxShadow:"0 24px 60px rgba(0,0,0,.2)"}}>
+        {/* Icon */}
+        <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:24}}>🔐</div>
+
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:20,fontWeight:800,color:"var(--t1)",marginBottom:8}}>
+            {forced ? "Bienvenue ! Changez votre mot de passe" : "Changer mon mot de passe"}
+          </div>
+          {forced && <div style={{fontSize:13,color:"var(--t4)",lineHeight:1.6}}>Pour votre sécurité, vous devez définir un nouveau mot de passe personnel avant d'accéder au tableau de bord.</div>}
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div className="clabel">Nouveau mot de passe</div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{position:"relative",flex:1}}>
+                <input className="ci" type={show?"text":"password"} value={newPass} onChange={e=>{setNewPass(e.target.value);setErr("");}}
+                  style={{paddingRight:64}} placeholder="••••••••" autoFocus/>
+                <button type="button" onClick={()=>setShow(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:12}}>{show?"Cacher":"Voir"}</button>
+              </div>
+              <button type="button" onClick={handleGenerate} style={{padding:"9px 12px",background:"#f5f3ff",color:"#7c3aed",border:"1.5px solid #c4b5fd",borderRadius:10,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>🔀 Générer</button>
+            </div>
+          </div>
+          <div>
+            <div className="clabel">Confirmer le nouveau mot de passe</div>
+            <input className="ci" type={show?"text":"password"} value={confirm} onChange={e=>{setConfirm(e.target.value);setErr("");}} placeholder="••••••••"/>
+          </div>
+          {err && <div style={{fontSize:12,color:"#ef4444",fontWeight:600,background:"#fff1f2",padding:"8px 12px",borderRadius:8}}>{err}</div>}
+
+          <div style={{display:"flex",gap:10,marginTop:4}}>
+            {!forced && onClose && <button onClick={onClose} style={{flex:1,padding:"11px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:12,fontWeight:600,fontSize:13,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>}
+            <button onClick={handleSave} disabled={done} style={{flex:2,padding:"11px",background:done?"#10b981":"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:12,fontWeight:700,fontSize:13,cursor:done?"default":"pointer",transition:"background .3s"}}>
+              {done ? "✅ Mot de passe mis à jour !" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SETTINGS / ADMINS PAGE ── */
+function SettingsPage({ currentAdmin, onSend, autoOpen }) {
+  const [admins, setAdmins] = React.useState([]);
+  const [loadingAdmins, setLoadingAdmins] = React.useState(true);
+  const [showModal, setShowModal] = React.useState(!!autoOpen);
+  const [editing, setEditing] = React.useState(null);
+  const [delTarget, setDelTarget] = React.useState(null);
+
+  async function loadAdmins(){
+    setLoadingAdmins(true);
+    try{
+      const {data,error}=await sb.from("admins").select("*").order("created_at",{ascending:true});
+      if(!error){ setAdmins(data||[]); localStorage.setItem(ADMINS_LS,JSON.stringify(data||[])); }
+      else { setAdmins(JSON.parse(localStorage.getItem(ADMINS_LS)||"[]")); }
+    }catch(e){ setAdmins(JSON.parse(localStorage.getItem(ADMINS_LS)||"[]")); }
+    setLoadingAdmins(false);
+  }
+
+  React.useEffect(()=>{ loadAdmins(); },[]);
+
+  async function save(admin){
+    const row={
+      id: admin.id||(Date.now()+""),
+      prenom: admin.prenom.trim(), nom: admin.nom.trim(), email: admin.email.trim().toLowerCase(),
+      password: admin.password, role: admin.role||"Administrateur",
+      permissions: admin.permissions||{},
+      must_change_password: admin.mustChangePassword!==false
+    };
+    if(editing){
+      const {error}=await sb.from("admins").update(row).eq("id",row.id);
+      if(error){ alert("Erreur : " + (error.message||"Impossible de modifier.")); return; }
+      const updated=admins.map(a=>a.id===row.id?row:a);
+      setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
+    } else {
+      const {error}=await sb.from("admins").insert([row]);
+      if(error){
+        if(error.code==="23505") alert("Cet email est déjà utilisé par un autre administrateur.");
+        else alert("Erreur : " + (error.message||"Impossible d'ajouter."));
+        return;
+      }
+      const updated=[...admins,row];
+      setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
+    }
+    setShowModal(false); setEditing(null);
+  }
+
+  async function remove(id){
+    try{ await sb.from("admins").delete().eq("id",id); }catch(e){}
+    const updated=admins.filter(a=>a.id!==id);
+    setAdmins(updated); localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
+    setDelTarget(null);
+  }
+
+  function openEdit(a){ setEditing(a); setShowModal(true); }
+  function openAdd(){   setEditing(null); setShowModal(true); }
+
+  const isSuperAdmin = currentAdmin?.isSuperAdmin;
+  const ROLE_COLORS = {"Super Administrateur":"#7c3aed","Administrateur":"#2563eb","Modérateur":"#0891b2","Lecteur":"#059669"};
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Gestion des administrateurs</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{isSuperAdmin?"Contrôlez les accès et les permissions de chaque administrateur":"Liste des administrateurs (lecture seule)"}</div>
+        </div>
+        {isSuperAdmin&&<button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un admin</button>}
+      </div>
+
+      {/* Super admin card */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>Compte principal</div>
+        <div style={{background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:16,padding:"20px 24px",display:"flex",alignItems:"center",gap:16,color:"white"}}>
+          <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0}}>HB</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,fontSize:15}}>Henri Beaumont</div>
+            <div style={{fontSize:12,opacity:.85}}>admin@chtis-en-maine.fr</div>
+          </div>
+          <div style={{padding:"4px 14px",borderRadius:20,background:"rgba(255,255,255,.2)",fontSize:12,fontWeight:700}}>Super Administrateur</div>
+          <div style={{padding:"4px 14px",borderRadius:20,background:"rgba(255,255,255,.15)",fontSize:12,fontWeight:600,opacity:.8}}>Tous les droits</div>
+        </div>
+      </div>
+
+      {/* Secondary admins */}
+      <div style={{fontSize:11,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>Autres administrateurs ({loadingAdmins?"…":admins.length})</div>
+
+      {admins.length===0 ? (
+        <div className="card" style={{padding:"48px 24px",textAlign:"center"}}>
+          <div style={{fontSize:36,marginBottom:12}}>👤</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t2)",marginBottom:6}}>Aucun autre administrateur</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginBottom:20}}>Ajoutez des administrateurs et définissez leurs permissions</div>
+          {isSuperAdmin&&<button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un administrateur</button>}
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {admins.map(a=>{
+            const rc = ROLE_COLORS[a.role]||"#6b7280";
+            const sectionCount = PERM_SECTIONS.filter(s=>a.permissions?.[s.key]?.voir).length;
+            return (
+              <div key={a.id} className="card" style={{padding:"18px 22px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+                  {/* Avatar */}
+                  <div style={{width:46,height:46,borderRadius:"50%",background:rc+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:rc,flexShrink:0}}>
+                    {(a.prenom[0]+(a.nom[0]||"")).toUpperCase()}
+                  </div>
+                  {/* Info */}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontWeight:800,fontSize:14,color:"var(--t1)"}}>{a.prenom} {a.nom}</span>
+                      <span style={{padding:"2px 10px",borderRadius:20,background:rc+"18",color:rc,fontSize:11,fontWeight:700}}>{a.role}</span>
+                    </div>
+                    <div style={{fontSize:12,color:"var(--t4)"}}>{a.email}</div>
+                  </div>
+                  {/* Permissions summary */}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {PERM_SECTIONS.map(s=>{
+                      const p = a.permissions?.[s.key]||{};
+                      if(!p.voir) return null;
+                      const actions=[p.ajouter&&"+",p.modifier&&"✎",p.supprimer&&"✕"].filter(Boolean).join(" ");
+                      return (
+                        <div key={s.key} title={s.label+(actions?" ("+actions+")":"")} style={{padding:"3px 10px",borderRadius:20,background:"var(--bg)",border:"1px solid var(--border)",fontSize:11,fontWeight:600,color:"var(--t2)"}}>
+                          {s.label}
+                        </div>
+                      );
+                    })}
+                    {sectionCount===0&&<span style={{fontSize:12,color:"#ef4444",fontWeight:600}}>Aucun accès</span>}
+                  </div>
+                  {/* Actions — super admin only */}
+                  {isSuperAdmin&&<div style={{display:"flex",gap:8,flexShrink:0}}>
+                    <button onClick={()=>openEdit(a)} style={{padding:"7px 14px",background:"#eff6ff",color:"#2563eb",border:"none",borderRadius:8,fontWeight:600,fontSize:12,cursor:"pointer"}}>Modifier</button>
+                    <button onClick={()=>setDelTarget(a)} style={{padding:"7px 14px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:12,cursor:"pointer"}}>Supprimer</button>
+                  </div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add/Edit modal */}
+      {showModal && <AdminModal admin={editing} onSave={save} onClose={()=>{setShowModal(false);setEditing(null);}} onSend={onSend} />}
+
+      {/* Delete confirm */}
+      {delTarget && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setDelTarget(null)}>
+          <div style={{background:"var(--card)",borderRadius:20,width:400,padding:32}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:8}}>Supprimer l'administrateur ?</div>
+            <div style={{fontSize:13,color:"var(--t4)",marginBottom:24}}>L'accès de <strong>{delTarget.prenom} {delTarget.nom}</strong> sera supprimé définitivement.</div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setDelTarget(null)} style={{padding:"9px 20px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+              <button onClick={()=>remove(delTarget.id)} style={{padding:"9px 20px",background:"#dc2626",color:"white",border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer"}}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminModal({ admin, onSave, onClose, onSend }) {
+  const ROLES = ["Administrateur","Modérateur","Lecteur"];
+  const PRESETS = [
+    {label:"Accès complet", fn: fullPerms},
+    {label:"Lecture seule", fn: viewOnlyPerms},
+    {label:"Aucun accès",   fn: defaultPerms},
+  ];
+
+  const [form, setForm] = React.useState(admin ? {
+    ...admin, password: admin.password||"", confirm:""
+  } : {
+    prenom:"", nom:"", email:"", password:"", confirm:"",
+    role:"Administrateur",
+    permissions: defaultPerms()
+  });
+  const [errors, setErrors] = React.useState({});
+  const [showPass, setShowPass] = React.useState(false);
+
+  function handleGenerate(){
+    const p = generatePassword();
+    setForm(f=>({...f, password:p, confirm:p}));
+    setShowPass(true);
+  }
+
+  function upd(k,v){ setForm(f=>({...f,[k]:v})); }
+
+  function applyPreset(fn){ setForm(f=>({...f, permissions: fn()})); }
+
+  function togglePerm(section, action, val){
+    setForm(f=>{
+      const perms = {...f.permissions, [section]:{...f.permissions[section], [action]:val}};
+      // Si on décoche "voir", on décoche tout le reste
+      if(action==="voir" && !val){
+        perms[section]={voir:false,ajouter:false,modifier:false,supprimer:false};
+      }
+      // Si on coche une action autre que voir, on coche aussi voir
+      if(action!=="voir" && val){
+        perms[section]={...perms[section], voir:true};
+      }
+      return {...f, permissions:perms};
+    });
+  }
+
+  function validate(){
+    const e={};
+    if(!form.prenom.trim()) e.prenom="Requis";
+    if(!form.nom.trim())    e.nom="Requis";
+    if(!form.email.includes("@")) e.email="Email invalide";
+    if(!admin && form.password.length<6) e.password="6 caractères minimum";
+    if(form.password && form.password!==form.confirm) e.confirm="Ne correspond pas";
+    setErrors(e);
+    return Object.keys(e).length===0;
+  }
+
+  const [sending, setSending] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+
+  async function handleSave(){
+    if(!validate()) return;
+    const {confirm, ...data} = form;
+    if(!data.password && admin) data.password = admin.password;
+    if(!admin) data.mustChangePassword = true; // force password change on first login
+
+    // Send welcome email FIRST (before modal closes), only for new admins
+    if(!admin && onSend && form.email.includes("@")){
+      setSending(true);
+      const subject = `Vos accès administrateur — Ch'tis en Maine`;
+      const message = `Bonjour ${form.prenom},\n\nVous avez été ajouté(e) en tant que ${form.role} de l'association Ch'tis en Maine.\n\nVoici vos identifiants de connexion :\n\n📧 Email (identifiant) : ${form.email}\n🔑 Mot de passe : ${form.password}\n\nRendez-vous sur le tableau de bord administrateur et changez votre mot de passe lors de votre première connexion.\n\nBienvenue dans l'équipe !\n\nCordialement,\nL'équipe Ch'tis en Maine`;
+      await onSend(form.email, form.prenom, form.nom, subject, message, "admin");
+      setSending(false);
+      setSent(true);
+      await new Promise(r=>setTimeout(r,1200)); // brief pause so user sees "✅ Email envoyé"
+    }
+
+    onSave(data); // Now close the modal
+  }
+
+  const ACTION_COLORS={"voir":"#2563eb","ajouter":"#059669","modifier":"#d97706","supprimer":"#dc2626"};
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
+      <div style={{background:"var(--card)",borderRadius:20,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",position:"relative"}} onClick={e=>e.stopPropagation()}>
+        {/* Header */}
+        <div style={{padding:"24px 28px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontSize:18,fontWeight:800,color:"var(--t1)"}}>{admin?"Modifier l'administrateur":"Nouvel administrateur"}</div>
+          <button onClick={onClose} style={{width:32,height:32,borderRadius:"50%",border:"none",background:"var(--bg)",cursor:"pointer",fontSize:18,color:"var(--t3)"}}>×</button>
+        </div>
+
+        <div style={{padding:"20px 28px 28px",display:"flex",flexDirection:"column",gap:20}}>
+          {/* Identity */}
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:".6px",marginBottom:12}}>Identité</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div>
+                <div className="clabel">Prénom *</div>
+                <input className="ci" value={form.prenom} onChange={e=>upd("prenom",e.target.value)} style={errors.prenom?{borderColor:"#ef4444"}:{}}/>
+                {errors.prenom&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.prenom}</div>}
+              </div>
+              <div>
+                <div className="clabel">Nom *</div>
+                <input className="ci" value={form.nom} onChange={e=>upd("nom",e.target.value)} style={errors.nom?{borderColor:"#ef4444"}:{}}/>
+                {errors.nom&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.nom}</div>}
+              </div>
+              <div>
+                <div className="clabel">Email *</div>
+                <input className="ci" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} style={errors.email?{borderColor:"#ef4444"}:{}}/>
+                {errors.email&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.email}</div>}
+              </div>
+              <div>
+                <div className="clabel">Rôle</div>
+                <select className="ci" value={form.role} onChange={e=>upd("role",e.target.value)} style={{cursor:"pointer"}}>
+                  {ROLES.map(r=><option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <div className="clabel">{admin?"Nouveau mot de passe":"Mot de passe *"}</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div style={{position:"relative",flex:1}}>
+                    <input className="ci" type={showPass?"text":"password"} value={form.password} onChange={e=>upd("password",e.target.value)} style={{paddingRight:70,...(errors.password?{borderColor:"#ef4444"}:{})}} placeholder={admin?"Laisser vide pour ne pas changer":"••••••••"}/>
+                    <button type="button" onClick={()=>setShowPass(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:12}}>{showPass?"Cacher":"Voir"}</button>
+                  </div>
+                  {!admin && <button type="button" onClick={handleGenerate} style={{padding:"9px 14px",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:10,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>🔀 Générer</button>}
+                </div>
+                {errors.password&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.password}</div>}
+                {!admin&&<div style={{fontSize:11,color:"#6b7280",marginTop:3}}>Le mot de passe sera envoyé par email. L'admin devra le changer à sa 1ère connexion.</div>}
+              </div>
+              {form.password&&<div style={{gridColumn:"1/-1"}}>
+                <div className="clabel">Confirmer le mot de passe</div>
+                <input className="ci" type={showPass?"text":"password"} value={form.confirm} onChange={e=>upd("confirm",e.target.value)} style={errors.confirm?{borderColor:"#ef4444"}:{}}/>
+                {errors.confirm&&<div style={{fontSize:11,color:"#ef4444",marginTop:3}}>{errors.confirm}</div>}
+              </div>}
+            </div>
+          </div>
+
+          {/* Permissions */}
+          <div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:".6px"}}>Permissions</div>
+              <div style={{display:"flex",gap:6}}>
+                {PRESETS.map(p=>(
+                  <button key={p.label} onClick={()=>applyPreset(p.fn)} style={{padding:"4px 12px",background:"var(--bg)",border:"1.5px solid var(--border)",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",color:"var(--t2)"}}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Header row */}
+            <div style={{display:"grid",gridTemplateColumns:"140px repeat(4,1fr)",gap:4,marginBottom:6}}>
+              <div/>
+              {PERM_ACTIONS.map(a=>(
+                <div key={a.key} style={{textAlign:"center",fontSize:11,fontWeight:700,color:ACTION_COLORS[a.key]||"var(--t3)",padding:"4px 0"}}>{a.label}</div>
+              ))}
+            </div>
+
+            {/* Permission rows */}
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {PERM_SECTIONS.map(s=>{
+                const p = form.permissions?.[s.key]||{};
+                return (
+                  <div key={s.key} style={{display:"grid",gridTemplateColumns:"140px repeat(4,1fr)",gap:4,padding:"8px 12px",borderRadius:10,background:"var(--bg)",alignItems:"center"}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"var(--t1)"}}>{s.label}</div>
+                    {PERM_ACTIONS.map(a=>(
+                      <div key={a.key} style={{display:"flex",justifyContent:"center"}}>
+                        <label style={{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          <input type="checkbox"
+                            checked={!!p[a.key]}
+                            onChange={e=>togglePerm(s.key, a.key, e.target.checked)}
+                            style={{width:16,height:16,accentColor:ACTION_COLORS[a.key]||"#667eea",cursor:"pointer"}}
+                          />
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:8,borderTop:"1px solid var(--border)"}}>
+            <button onClick={onClose} style={{padding:"10px 22px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+            <button onClick={handleSave} disabled={sending} style={{padding:"10px 22px",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:10,fontWeight:700,fontSize:13,cursor:sending?"wait":"pointer",opacity:sending?.7:1}}>
+              {sending ? "Envoi de l'email…" : sent ? "✅ Email envoyé !" : admin ? "Enregistrer les modifications" : "Créer et envoyer les accès"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── MESSAGES PAGE ── */
+function MessagesPage({ canDo }) {
+  canDo = canDo || (()=>true);
+  const SOURCE_LABELS = {
+    membre:      {label:"Membre",      color:"#2563eb", bg:"#eff6ff"},
+    broadcast:   {label:"Actualités",  color:"#7c3aed", bg:"#f5f3ff"},
+    "événement": {label:"Événement",   color:"#0891b2", bg:"#ecfeff"},
+    facture:     {label:"Facture",     color:"#d97706", bg:"#fffbeb"},
+    admin:       {label:"Admin",       color:"#7c3aed", bg:"#f5f3ff"},
+  };
+
+  const [logs, setLogs] = React.useState([]);
+  const [loadingLogs, setLoadingLogs] = React.useState(true);
+  const [search, setSearch] = React.useState("");
+  const [filterSrc, setFilterSrc] = React.useState("tous");
+  const [detail, setDetail] = React.useState(null);
+
+  async function loadLogs(){
+    setLoadingLogs(true);
+    try{
+      const {data,error}=await sb.from("messages_log").select("*").order("date",{ascending:false}).limit(500);
+      if(!error) setLogs(data||[]);
+    }catch(e){}
+    setLoadingLogs(false);
+  }
+
+  React.useEffect(()=>{ loadLogs(); },[]);
+
+  const filtered = logs.filter(m=>{
+    const q = search.toLowerCase();
+    const matchSearch = !q || m.to.toLowerCase().includes(q) || (m.nom||"").toLowerCase().includes(q) || (m.subject||"").toLowerCase().includes(q);
+    const matchSrc = filterSrc==="tous" || m.source===filterSrc;
+    return matchSearch && matchSrc;
+  });
+
+  const sources = ["tous","membre","broadcast","événement","facture","admin"];
+
+  function fmtDate(iso){
+    const d = new Date(iso);
+    return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  }
+
+  function srcStyle(src){ return SOURCE_LABELS[src]||{label:src||"?",color:"#6b7280",bg:"#f3f4f6"}; }
+
+  async function handleClear(){
+    if(!window.confirm("Effacer tout l'historique des messages ?")) return;
+    try{ await sb.from("messages_log").delete().neq("id",""); }catch(e){}
+    setLogs([]);
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Historique des messages</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{loadingLogs?"Chargement…":`${logs.length} email${logs.length!==1?"s":""} envoyé${logs.length!==1?"s":""} depuis le site`}</div>
+        </div>
+        {logs.length>0&&canDo("supprimer")&&<button onClick={handleClear} style={{padding:"8px 16px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer"}}>Effacer l'historique</button>}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20,alignItems:"center"}}>
+        <div style={{position:"relative",flex:"1",minWidth:200}}>
+          <input
+            value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Rechercher destinataire, objet..."
+            style={{width:"100%",padding:"9px 14px 9px 36px",border:"1.5px solid var(--border)",borderRadius:10,fontSize:13,background:"var(--bg)",color:"var(--t1)",outline:"none"}}
+          />
+          <svg style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",opacity:.4}} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {sources.map(s=>{
+            const sc = s==="tous"?{label:"Tous",color:"#374151",bg:"#f3f4f6"}:srcStyle(s);
+            return (
+              <button key={s} onClick={()=>setFilterSrc(s)} style={{
+                padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+                background: filterSrc===s ? sc.color : sc.bg,
+                color: filterSrc===s ? "#fff" : sc.color,
+                transition:"all .15s"
+              }}>{sc.label}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* List */}
+      {filtered.length===0 ? (
+        <div className="card" style={{padding:"60px 24px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📭</div>
+          <div style={{fontSize:15,fontWeight:700,color:"var(--t2)",marginBottom:6}}>Aucun message</div>
+          <div style={{fontSize:13,color:"var(--t4)"}}>Les emails envoyés depuis le site apparaîtront ici automatiquement.</div>
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(m=>{
+            const sc = srcStyle(m.source);
+            return (
+              <div key={m.id} onClick={()=>setDetail(m)} style={{
+                background:"var(--card)",border:"1.5px solid var(--border)",borderRadius:14,padding:"14px 18px",
+                display:"flex",alignItems:"center",gap:16,cursor:"pointer",transition:"box-shadow .15s",
+                boxShadow:"0 1px 4px rgba(0,0,0,.04)"
+              }}
+                onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)"}
+                onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}
+              >
+                {/* Avatar */}
+                <div style={{width:40,height:40,borderRadius:"50%",background:sc.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,fontWeight:700,color:sc.color}}>
+                  {(m.prenom||m.nom||m.to)[0]?.toUpperCase()||"?"}
+                </div>
+                {/* Info */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,fontSize:13,color:"var(--t1)"}}>{m.prenom} {m.nom}</span>
+                    <span style={{fontSize:11,color:"var(--t4)"}}>({m.to})</span>
+                    <span style={{padding:"2px 9px",borderRadius:20,background:sc.bg,color:sc.color,fontSize:11,fontWeight:700}}>{sc.label}</span>
+                  </div>
+                  <div style={{fontWeight:600,fontSize:13,color:"var(--t2)",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.subject}</div>
+                  <div style={{fontSize:12,color:"var(--t4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(m.message||"").replace(/\n/g," ")}</div>
+                </div>
+                {/* Date */}
+                <div style={{fontSize:11,color:"var(--t4)",whiteSpace:"nowrap",flexShrink:0}}>{fmtDate(m.date)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {detail&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setDetail(null)}>
+          <div style={{background:"var(--card)",borderRadius:20,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto",padding:32,position:"relative"}} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>setDetail(null)} style={{position:"absolute",top:16,right:16,width:32,height:32,borderRadius:"50%",border:"none",background:"var(--bg)",cursor:"pointer",fontSize:18,color:"var(--t3)"}}>×</button>
+            {(()=>{
+              const sc=srcStyle(detail.source);
+              const d=new Date(detail.date);
+              const dateStr=d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+              return (<>
+                <div style={{marginBottom:20}}>
+                  <div style={{fontSize:18,fontWeight:800,color:"var(--t1)",marginBottom:6}}>{detail.subject}</div>
+                  <span style={{padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color,fontSize:11,fontWeight:700}}>{sc.label}</span>
+                </div>
+                <div style={{background:"var(--bg)",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+                  <div style={{fontSize:12,color:"var(--t4)",marginBottom:2}}>Destinataire</div>
+                  <div style={{fontWeight:700,color:"var(--t1)"}}>{detail.prenom} {detail.nom} <span style={{fontWeight:400,color:"var(--t4)"}}>({detail.to})</span></div>
+                </div>
+                <div style={{background:"var(--bg)",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+                  <div style={{fontSize:12,color:"var(--t4)",marginBottom:4}}>Date d'envoi</div>
+                  <div style={{fontWeight:600,color:"var(--t1)"}}>{dateStr}</div>
+                </div>
+              </>);
+            })()}
+            <div style={{background:"var(--bg)",borderRadius:12,padding:"14px 16px"}}>
+              <div style={{fontSize:12,color:"var(--t4)",marginBottom:8}}>Message</div>
+              <div style={{fontSize:13,color:"var(--t1)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{detail.message}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Placeholder({icon,label}) {
+  return (
+    <div className="card" style={{padding:"70px 24px",textAlign:"center"}}>
+      <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",boxShadow:"0 8px 24px rgba(102,126,234,.3)"}}>
+        <Icon name={icon} size={28} color="white" />
+      </div>
+      <div style={{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:6,letterSpacing:"-.2px"}}>{label}</div>
+      <div style={{fontSize:13,color:"var(--t4)"}}>Cette section sera bientôt disponible.</div>
+    </div>
+  );
+}
+
+/* APP */
+const PAGES = {
+  dashboard:["Pages","Tableau de bord"],
+  members:  ["Membres","Gestion des membres"],
+  contacts: ["Contacts","Annuaire des contacts"],
+  documents:["Documents","Gestion des documents"],
+  invoices: ["Factures","Cotisations & Factures"],
+  email:    ["Communications","Actualités & Emails"],
+  events:   ["Agenda","Événements"],
+  messages: ["Communications","Messages"],
+  "invoice-gen": ["Outils","Générateur de facture"],
+  "add-member":  ["Membres","Ajouter un membre"],
+  settings:   ["Admin","Paramètres"],
+  "add-admin":["Admin","Ajouter un administrateur"],
+};
+
+/* MEMBER MODAL */
+function MemberModal({ member, onSave, onClose }) {
+  const ROLES = ["Membre","Président","Vice-Président","Secrétaire","Trésorier","Conseil d'Administration"];
+  const [form, setForm] = useState(member ? {...member} : {
+    prenom:"", nom:"", email:"", tel:"", ville:"", role:"Membre",
+    statut:"actif", cotisation:"en attente", montant:25, annee:new Date().getFullYear(), joined: new Date().toISOString().split("T")[0]
+  });
+  const [errors, setErrors] = useState({});
+  function upd(k,v){ setForm(f=>({...f,[k]:v})); if(errors[k]) setErrors(e=>({...e,[k]:""})); }
+  function validate(){
+    const e={};
+    if(!form.prenom.trim()) e.prenom="Requis";
+    if(!form.nom.trim()) e.nom="Requis";
+    if(!form.email.trim()||!form.email.includes("@")) e.email="Email invalide";
+    if(!form.tel.trim()) e.tel="Requis";
+    setErrors(e);
+    return Object.keys(e).length===0;
+  }
+  function save(){ if(!validate()) return; onSave(form); }
+
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:18,padding:"28px 28px 24px",width:520,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
+          <div style={{fontSize:17,fontWeight:800,color:"var(--t1)"}}>{member?"✏️ Modifier le membre":"👤 Ajouter un membre"}</div>
+          <button onClick={onClose} style={{background:"#f3f4f6",border:"none",width:32,height:32,borderRadius:8,fontSize:18,cursor:"pointer",color:"var(--t3)",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Prénom *</div>
+            <input className="ci" value={form.prenom} onChange={e=>upd("prenom",e.target.value)} placeholder="Jean" style={errors.prenom?{borderColor:"#C53030"}:{}}/>
+            {errors.prenom&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.prenom}</div>}
+          </div>
+          <div>
+            <div className="clabel">Nom *</div>
+            <input className="ci" value={form.nom} onChange={e=>upd("nom",e.target.value)} placeholder="Dupont" style={errors.nom?{borderColor:"#C53030"}:{}}/>
+            {errors.nom&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.nom}</div>}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div className="clabel">Email *</div>
+          <input className="ci" type="email" value={form.email} onChange={e=>upd("email",e.target.value)} placeholder="jean@email.fr" style={errors.email?{borderColor:"#C53030"}:{}}/>
+          {errors.email&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.email}</div>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Téléphone *</div>
+            <input className="ci" value={form.tel} onChange={e=>upd("tel",e.target.value)} placeholder="+33 6 12 34 56 78" style={errors.tel?{borderColor:"#C53030"}:{}}/>
+            {errors.tel&&<div style={{fontSize:11,color:"#C53030",marginTop:3}}>{errors.tel}</div>}
+          </div>
+          <div>
+            <div className="clabel">Ville</div>
+            <input className="ci" value={form.ville} onChange={e=>upd("ville",e.target.value)} placeholder="Le Mans"/>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div>
+            <div className="clabel">Rôle</div>
+            <select className="csel" value={form.role} onChange={e=>upd("role",e.target.value)}>
+              {ROLES.map(r=><option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="clabel">Cotisation</div>
+            <select className="csel" value={form.cotisation} onChange={e=>upd("cotisation",e.target.value)}>
+              <option value="payée">Payée</option>
+              <option value="en attente">En attente</option>
+              <option value="impayée">Impayée</option>
+            </select>
+          </div>
+        </div>
+        <div style={{marginBottom:20}}>
+          <div className="clabel">Statut</div>
+          <select className="csel" value={form.statut} onChange={e=>upd("statut",e.target.value)}>
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+          </select>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{padding:"10px 20px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+          <button className="send-btn" style={{width:"auto",padding:"10px 24px"}} onClick={save}>
+            <Icon name="plus" size={14} color="white"/> {member?"Enregistrer":"Ajouter le membre"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* DELETE CONFIRM MODAL */
+function DeleteModal({ member, onConfirm, onClose }) {
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{background:"white",borderRadius:18,padding:"28px",width:400,boxShadow:"0 24px 64px rgba(0,0,0,.2)",animation:"sIn .22s ease"}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"#FFF5F5",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}>
+            <Icon name="trash" size={24} color="#C53030"/>
+          </div>
+          <div style={{fontSize:17,fontWeight:800,color:"var(--t1)",marginBottom:8}}>Supprimer le membre</div>
+          <div style={{fontSize:14,color:"var(--t3)"}}>Êtes-vous sûr de vouloir supprimer <strong>{member?.prenom} {member?.nom}</strong> ? Cette action est irréversible.</div>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+          <button onClick={onClose} style={{padding:"10px 22px",background:"var(--bg)",border:"1.5px solid var(--t6)",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",color:"var(--t2)"}}>Annuler</button>
+          <button onClick={onConfirm} style={{padding:"10px 22px",background:"#C53030",color:"white",border:"none",borderRadius:"var(--r-sm)",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:7}}>
+            <Icon name="trash" size={14} color="white"/> Supprimer définitivement
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [in_,setIn]=useState(false);
+  const [currentAdmin,setCurrentAdmin]=useState(null);
+  const [showChangePass,setShowChangePass]=useState(false);
+  const [page,setPage]=useState("dashboard");
+  const [sel,setSel]=useState(null);
+  const [members,setMembers]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [showAddModal,setShowAddModal]=useState(false);
+  const [editMember,setEditMember]=useState(null);
+  const [deleteMember,setDeleteMember]=useState(null);
+  const [filterMember,setFilterMember]=useState("");
+
+  function canAccess(section){
+    if(!currentAdmin||currentAdmin.isSuperAdmin) return true;
+    return currentAdmin.permissions?.[section]?.voir !== false;
+  }
+
+  function canDo(section, action){
+    if(!currentAdmin||currentAdmin.isSuperAdmin) return true;
+    return currentAdmin.permissions?.[section]?.[action] === true;
+  }
+
+  function handleLogin(admin){
+    setCurrentAdmin(admin);
+    setIn(true);
+    loadMembers();
+    if(admin && !admin.isSuperAdmin && admin.mustChangePassword) setShowChangePass(true);
+  }
+
+  async function handlePasswordChanged(newPass){
+    try{
+      await sb.from("admins").update({password:newPass,must_change_password:false}).eq("id",currentAdmin.id);
+    }catch(e){}
+    const admins=JSON.parse(localStorage.getItem(ADMINS_LS)||"[]");
+    const updated=admins.map(a=>a.id===currentAdmin.id?{...a,password:newPass,mustChangePassword:false}:a);
+    localStorage.setItem(ADMINS_LS,JSON.stringify(updated));
+    setCurrentAdmin(a=>({...a,password:newPass,mustChangePassword:false}));
+    setShowChangePass(false);
+  }
+
+  if (!in_) return <Login onLogin={handleLogin} />;
+  function go(p){setPage(p);setSel(null);}
+  const [bc,title]=PAGES[page]||["",""];
+
+  // ── Load members from Supabase ──
+  async function loadMembers(){
+    setLoading(true);
+    try {
+      const {data,error}=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(error) throw error;
+      const src=data&&data.length>0 ? data : MEMBERS;
+      const mapped=src.map((m,i)=>({
+        ...m,
+        prenom: m.prenom||"",
+        nom: m.nom||"",
+        joined: m.joined||m.created_at||new Date().toISOString(),
+        av: ((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase(),
+        grad: AV_GRADS[i%AV_GRADS.length]
+      }));
+      setMembers(mapped);
+      MEMBERS.length=0; mapped.forEach(m=>MEMBERS.push(m));
+    } catch(e){
+      
+      const mapped=MEMBERS.map((m,i)=>({
+        ...m,
+        joined: m.joined||new Date().toISOString(),
+        av: ((m.prenom||"?")[0]+(m.nom||"?")[0]).toUpperCase(),
+        grad: AV_GRADS[i%AV_GRADS.length]
+      }));
+      setMembers(mapped);
+    }
+    setLoading(false);
+  }
+
+  // ── Sync CA page on GitHub ──
+  const GH_TOKEN="github_pat_11BXI4EAQ0sYZcekIPqwtF_HJBpPkL1JXqNqEYQXoUR3mEjsCfdWuKiF6ira2dmhqAC6Z";
+  const GH_REPO="WebForgeDev1/chtis-dashboard";
+  const GH_FILE="membres-ca.json";
+
+  async function syncGitHub(updatedMembers){
+    try{
+      const infoRes=await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`,{
+        headers:{Authorization:`Bearer ${GH_TOKEN}`,Accept:"application/vnd.github+json"}
+      });
+      const info=await infoRes.json();
+      const sha=info.sha;
+      const caList=updatedMembers.map(m=>({nom:`${m.prenom} ${m.nom}`,role:m.role}));
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify(caList,null,2))));
+      await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_FILE}`,{
+        method:"PUT",
+        headers:{Authorization:`Bearer ${GH_TOKEN}`,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+        body:JSON.stringify({message:"Mise à jour membres CA",content,sha})
+      });
+    }catch(e){}
+  }
+
+  // ── EmailJS config ──
+  const EJS_SERVICE="service_dm3c4sw";
+  const EJS_TEMPLATE="template_q1ykzn9";
+  const EJS_PUBLIC_KEY="WHyyVoH8-3lqh6XL6";
+
+  // ── Message log ──
+  function logMessage({to, prenom, nom, subject, message, source}){
+    const entry={
+      id:"msg"+Date.now()+Math.random().toString(36).slice(2),
+      to, prenom:prenom||"", nom:nom||to,
+      subject, message, source,
+      date:new Date().toISOString()
+    };
+    sb.from("messages_log").insert([entry]).then(()=>{}).catch(()=>{});
+  }
+
+  async function sendEmail(to, prenom, nom, role, type){
+    if(!to || !to.includes("@")) return;
+    let subject, titre, message, header_color;
+    if(type==="bienvenue"){
+      subject=`Bienvenue dans Ch'tis en Maine, ${prenom} !`;
+      titre=`Bienvenue ${prenom} ${nom} ! 🎉`;
+      message=`Nous sommes ravis de vous accueillir parmi nous.\n\nÀ très bientôt !`;
+      header_color="linear-gradient(135deg,#667eea,#764ba2)";
+    } else if(type==="modification"){
+      subject=`Vos informations ont été mises à jour - Ch'tis en Maine`;
+      titre=`Mise à jour de votre profil ✏️`;
+      message=`Bonjour ${prenom} ${nom},\n\nVos informations ont bien été mises à jour dans notre association.\n\nSi vous n'êtes pas à l'origine de cette modification, contactez-nous immédiatement.`;
+      header_color="linear-gradient(135deg,#2563eb,#3b82f6)";
+    } else if(type==="en attente"){
+      subject=`Votre cotisation - Ch'tis en Maine`;
+      titre=`Bonjour ${prenom} 👋`;
+      message=`Nous vous rappelons gentiment que votre cotisation est en attente.\n\nMerci de bien vouloir la régler dès que possible.`;
+      header_color="linear-gradient(135deg,#d97706,#f59e0b)";
+    } else if(type==="impayée"){
+      subject=`Votre cotisation - Ch'tis en Maine`;
+      titre=`Bonjour ${prenom} 👋`;
+      message=`Nous n'avons pas encore reçu votre cotisation.\n\nMerci de bien vouloir régulariser votre situation.`;
+      header_color="linear-gradient(135deg,#dc2626,#ef4444)";
+    } else if(type==="paiement"){
+      subject=`Merci - Ch'tis en Maine`;
+      titre=`Merci ${prenom} ! ✅`;
+      message=`Nous avons bien reçu votre cotisation. Merci beaucoup !`;
+      header_color="linear-gradient(135deg,#059669,#10b981)";
+    } else if(type==="suppression"){
+      subject=`Au revoir - Ch'tis en Maine`;
+      titre=`Au revoir ${prenom} 👋`;
+      message=`Nous vous remercions pour votre participation et espérons vous revoir bientôt parmi nous !`;
+      header_color="linear-gradient(135deg,#374151,#1f2937)";
+    }
+    try{
+      await fetch("https://api.emailjs.com/api/v1.0/email/send",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          service_id: EJS_SERVICE,
+          template_id: EJS_TEMPLATE,
+          user_id: EJS_PUBLIC_KEY,
+          template_params:{ email:to, prenom, nom, role:role||"Membre", subject, titre, message, header_color }
+        })
+      });
+      const src = ["paiement","en attente","impayée"].includes(type) ? "facture" : "membre";
+      logMessage({to, prenom, nom, subject, message, source: src});
+    }catch(e){}
+  }
+
+  async function sendBroadcast(to, prenom, nom, subject, message, source){
+    if(!to||!to.includes("@")) return;
+    try{
+      await fetch("https://api.emailjs.com/api/v1.0/email/send",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          service_id:EJS_SERVICE, template_id:EJS_TEMPLATE, user_id:EJS_PUBLIC_KEY,
+          template_params:{email:to,prenom:prenom||"",nom:nom||to,role:"Adhérent",subject,titre:subject,message,header_color:"linear-gradient(135deg,#667eea,#764ba2)"}
+        })
+      });
+      logMessage({to, prenom, nom, subject, message, source: source||"broadcast"});
+    }catch(e){}
+  }
+
+  async function handleAddMember(form){
+    try{
+      const {data,error}=await sb.from("membres").insert([{
+        prenom:form.prenom, nom:form.nom, email:form.email||"",
+        tel:form.tel||"", ville:form.ville||"", role:form.role||"Membre",
+        statut:form.statut||"actif", cotisation:form.cotisation||"en attente",
+        montant:25, annee:new Date().getFullYear(), joined:new Date().toISOString().split("T")[0]
+      }]).select();
+      if(error) throw error;
+      // Créer facture automatiquement
+      await sb.from("factures").insert([{
+        membre_id: data[0]?.id||null,
+        nom_membre: `${form.prenom} ${form.nom}`,
+        montant: 25,
+        statut: form.cotisation||"en attente",
+        type: `Cotisation annuelle ${new Date().getFullYear()}`,
+        date: new Date().toISOString().split("T")[0]
+      }]);
+      await loadMembers();
+      go("members");
+      // Email bienvenue si email fourni
+      if(form.email && form.email.includes("@"))
+        sendEmail(form.email, form.prenom, form.nom, form.role||"Membre", "bienvenue");
+      // Sync GitHub CA page
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){}
+  }
+
+  async function handleEditMember(form){
+    try{
+      const {error}=await sb.from("membres").update({
+        prenom:form.prenom, nom:form.nom, email:form.email||"",
+        tel:form.tel||"", ville:form.ville||"", role:form.role||"Membre",
+        statut:form.statut||"actif", cotisation:form.cotisation||"en attente"
+      }).eq("id",form.id);
+      if(error) throw error;
+      await loadMembers();
+      // Email selon changement
+      const ancien=members.find(m=>m.id===form.id);
+      if(form.email && form.email.includes("@")){
+        if(ancien && ancien.cotisation!==form.cotisation){
+          if(form.cotisation==="payée") sendEmail(form.email,form.prenom,form.nom,form.role,"paiement");
+          else if(form.cotisation==="en attente") sendEmail(form.email,form.prenom,form.nom,form.role,"en attente");
+          else if(form.cotisation==="impayée") sendEmail(form.email,form.prenom,form.nom,form.role,"impayée");
+        }
+      }
+      setEditMember(null); setSel(null);
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){}
+  }
+
+  async function handleDeleteMember(){
+    try{
+      const m=deleteMember;
+      const {error}=await sb.from("membres").delete().eq("id",m.id);
+      if(error) throw error;
+      await loadMembers();
+      setDeleteMember(null); setSel(null);
+      if(m.email && m.email.includes("@"))
+        sendEmail(m.email, m.prenom, m.nom, m.role||"Membre", "suppression");
+      const fresh=await sb.from("membres").select("*").order("created_at",{ascending:true});
+      if(!fresh.error) syncGitHub(fresh.data||[]);
+    }catch(e){}
+  }
+
+  async function handleMarkPaid(m){
+    try{
+      const {error}=await sb.from("membres").update({cotisation:"payée"}).eq("id",m.id);
+      if(error) throw error;
+      await loadMembers();
+      setSel({...m,cotisation:"payée"});
+      // Email confirmation paiement
+      sendEmail(m.email, m.prenom, m.nom, m.role||"Membre", "paiement");
+    }catch(e){}
+  }
+
+  function render(){
+    if(loading) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",flexDirection:"column",gap:16}}><div style={{width:40,height:40,border:"4px solid #ede9fe",borderTop:"4px solid #667eea",borderRadius:"50%",animation:"spin 1s linear infinite"}}></div><div style={{color:"var(--t3)",fontSize:14}}>Chargement des données...</div></div>;
+    switch(page){
+      case "dashboard": return <Dashboard members={members} set={go} />;
+      case "members":   return <Members members={members} onSelect={setSel} onEdit={canDo("membres","modifier")?setEditMember:null} onDelete={canDo("membres","supprimer")?setDeleteMember:null} onAdd={canDo("membres","ajouter")?()=>setShowAddModal(true):null} />;
+      case "documents": return <DocsPage canDo={(a)=>canDo("documents",a)} />;
+      case "invoices":  return <Invoices members={members} filterMember={filterMember} onClearFilter={()=>setFilterMember("")} onEmail={sendEmail} canDo={(a)=>canDo("invoices",a)} />;
+      case "email":       return <EmailPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"broadcast")} canDo={(a)=>canDo("email",a)} />;
+      case "invoice-gen": return <InvoiceGenerator members={members} />;
+      case "add-member":  return <AddMember onCreated={()=>go("members")} />;
+      case "contacts":    return <Contacts canDo={(a)=>canDo("contacts",a)} />;
+      case "events":      return <EventsPage members={members} onSend={(to,prenom,nom,subject,message)=>sendBroadcast(to,prenom,nom,subject,message,"événement")} canDo={(a)=>canDo("events",a)} />;
+      case "messages":    return <MessagesPage canDo={(a)=>canDo("messages",a)} />;
+      case "settings":    return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={false} />;
+      case "add-admin":   return <SettingsPage currentAdmin={currentAdmin} onSend={sendBroadcast} autoOpen={true} />;
+      default: return <Placeholder icon={NAVS.find(n=>n.id===page)?.icon||"home"} label={title} />;
+    }
+  }
+
+  return (
+    <div className="shell">
+      <Sidebar active={page} set={go} logout={()=>setIn(false)} currentAdmin={currentAdmin} canAccess={canAccess} onChangePass={()=>setShowChangePass(true)} />
+      <div className="main">
+        <Topbar breadcrumb={bc} title={title} currentAdmin={currentAdmin} action={page==="members"&&canDo("membres","ajouter")&&<button className="add-btn" onClick={()=>setShowAddModal(true)}><Icon name="plus" size={14} color="white"/>Ajouter</button>} />
+        <div className="page">{render()}</div>
+      </div>
+      {sel&&<Drawer m={sel} close={()=>setSel(null)} onEdit={canDo("membres","modifier")?()=>{setEditMember(sel);setSel(null)}:null} onDelete={canDo("membres","supprimer")?()=>setDeleteMember(sel):null} onMarkPaid={canDo("membres","modifier")?()=>handleMarkPaid(sel):null} onEmail={(type)=>sendEmail(sel.email,sel.prenom,sel.nom,sel.role||"Membre",type)} onViewInvoices={()=>{setFilterMember(`${sel.prenom} ${sel.nom}`);go("invoices");setSel(null);}} />}
+      {showAddModal&&<MemberModal onSave={handleAddMember} onClose={()=>setShowAddModal(false)} />}
+      {editMember&&<MemberModal member={editMember} onSave={handleEditMember} onClose={()=>setEditMember(null)} />}
+      {deleteMember&&<DeleteModal member={deleteMember} onConfirm={handleDeleteMember} onClose={()=>setDeleteMember(null)} />}
+      {showChangePass&&<ChangePasswordModal admin={currentAdmin} onSave={handlePasswordChanged} forced={currentAdmin?.mustChangePassword} onClose={()=>setShowChangePass(false)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
