@@ -2751,6 +2751,7 @@ function SettingsPage({ currentAdmin, onSend, autoOpen }) {
   function openEdit(a){ setEditing(a); setShowModal(true); }
   function openAdd(){   setEditing(null); setShowModal(true); }
 
+  const isSuperAdmin = currentAdmin?.isSuperAdmin;
   const ROLE_COLORS = {"Super Administrateur":"#7c3aed","Administrateur":"#2563eb","Modérateur":"#0891b2","Lecteur":"#059669"};
 
   return (
@@ -2759,9 +2760,9 @@ function SettingsPage({ currentAdmin, onSend, autoOpen }) {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
           <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",letterSpacing:"-.3px"}}>Gestion des administrateurs</div>
-          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>Contrôlez les accès et les permissions de chaque administrateur</div>
+          <div style={{fontSize:13,color:"var(--t4)",marginTop:2}}>{isSuperAdmin?"Contrôlez les accès et les permissions de chaque administrateur":"Liste des administrateurs (lecture seule)"}</div>
         </div>
-        <button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un admin</button>
+        {isSuperAdmin&&<button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un admin</button>}
       </div>
 
       {/* Super admin card */}
@@ -2786,7 +2787,7 @@ function SettingsPage({ currentAdmin, onSend, autoOpen }) {
           <div style={{fontSize:36,marginBottom:12}}>👤</div>
           <div style={{fontSize:15,fontWeight:700,color:"var(--t2)",marginBottom:6}}>Aucun autre administrateur</div>
           <div style={{fontSize:13,color:"var(--t4)",marginBottom:20}}>Ajoutez des administrateurs et définissez leurs permissions</div>
-          <button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un administrateur</button>
+          {isSuperAdmin&&<button onClick={openAdd} className="add-btn"><Icon name="plus" size={14} color="white"/> Ajouter un administrateur</button>}
         </div>
       ) : (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -2822,11 +2823,11 @@ function SettingsPage({ currentAdmin, onSend, autoOpen }) {
                     })}
                     {sectionCount===0&&<span style={{fontSize:12,color:"#ef4444",fontWeight:600}}>Aucun accès</span>}
                   </div>
-                  {/* Actions */}
-                  <div style={{display:"flex",gap:8,flexShrink:0}}>
+                  {/* Actions — super admin only */}
+                  {isSuperAdmin&&<div style={{display:"flex",gap:8,flexShrink:0}}>
                     <button onClick={()=>openEdit(a)} style={{padding:"7px 14px",background:"#eff6ff",color:"#2563eb",border:"none",borderRadius:8,fontWeight:600,fontSize:12,cursor:"pointer"}}>Modifier</button>
                     <button onClick={()=>setDelTarget(a)} style={{padding:"7px 14px",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,fontWeight:600,fontSize:12,cursor:"pointer"}}>Supprimer</button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             );
